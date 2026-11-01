@@ -1,0 +1,671 @@
+{
+  "info": {
+    "_postman_id": "janmitra-api-collection-v1",
+    "name": "JANMITRA - Nagpur Municipal Corporation API",
+    "description": "Postman Collection for JANMITRA Civic Issue Reporting & Resolution System (v1). Contains all 25 authenticated and public endpoints with pre-configured variables, pre-request Authorization injection, and example request bodies.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sample_complaint_id",
+      "value": "e3b0c442-98fc-1c14-9afe-432194689240",
+      "type": "string"
+    },
+    {
+      "key": "sample_worker_id",
+      "value": "8",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Automatically inject Authorization header if access_token variable is present",
+          "const token = pm.collectionVariables.get('access_token') || pm.environment.get('access_token');",
+          "const isPublicAuthRoute = pm.request.url.getPath().includes('/api/v1/auth/login/') || ",
+          "                          pm.request.url.getPath().includes('/api/v1/auth/register/') || ",
+          "                          pm.request.url.getPath().includes('/api/v1/auth/refresh/');",
+          "",
+          "if (token && !isPublicAuthRoute) {",
+          "    pm.request.headers.upsert({",
+          "        key: 'Authorization',",
+          "        value: 'Bearer ' + token",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Authentication & Accounts",
+      "item": [
+        {
+          "name": "1. Register Citizen",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    const token = res.access || (res.tokens && res.tokens.access);",
+                  "    if (token) {",
+                  "        pm.collectionVariables.set('access_token', token);",
+                  "    }",
+                  "    const refresh = res.refresh || (res.tokens && res.tokens.refresh);",
+                  "    if (refresh) {",
+                  "        pm.collectionVariables.set('refresh_token', refresh);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9820000005\",\n  \"name\": \"Aarav Sharma\",\n  \"password\": \"SecurePassword123!\",\n  \"ward\": 2,\n  \"email\": \"aarav.sharma@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register", ""]
+            },
+            "description": "Registers a new citizen with mobile number and municipal ward (1-4). Returns JWT tokens."
+          }
+        },
+        {
+          "name": "2. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.access) {",
+                  "        pm.collectionVariables.set('access_token', res.access);",
+                  "    }",
+                  "    if (res.refresh) {",
+                  "        pm.collectionVariables.set('refresh_token', res.refresh);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9820000001\",\n  \"password\": \"CitizenPassword@123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login", ""]
+            },
+            "description": "Authenticates user via mobile and password, returning JWT access and refresh tokens."
+          }
+        },
+        {
+          "name": "3. Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.access) {",
+                  "        pm.collectionVariables.set('access_token', res.access);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh", ""]
+            },
+            "description": "Generates a fresh access token given a valid refresh token."
+          }
+        },
+        {
+          "name": "4. Update FCM Token",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcm_token\": \"fXyZ1234567890:APA91bF...qWertySampleToken\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/fcm-token/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "fcm-token", ""]
+            },
+            "description": "Registers device FCM token for push notifications."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Master Data",
+      "item": [
+        {
+          "name": "5. List Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/?department=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "categories", ""],
+              "query": [
+                {
+                  "key": "department",
+                  "value": "1",
+                  "description": "Filter by department ID (1-4)"
+                }
+              ]
+            },
+            "description": "Lists master categories for civic issues linked to NMC departments."
+          }
+        },
+        {
+          "name": "6. List Municipal Wards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/wards/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "wards", ""]
+            },
+            "description": "Lists all 4 NMC municipal administrative wards."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Civic Complaints & Workflow",
+      "item": [
+        {
+          "name": "7. Submit Complaint",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "ward",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "title",
+                  "value": "Severe pothole on West High Court Road near Shankar Nagar Square",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Deep pothole measuring 2 feet wide and 6 inches deep causing vehicular disruption.",
+                  "type": "text"
+                },
+                {
+                  "key": "location_lat",
+                  "value": "21.1458",
+                  "type": "text"
+                },
+                {
+                  "key": "location_lng",
+                  "value": "79.0882",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "West High Court Road, Shankar Nagar",
+                  "type": "text"
+                },
+                {
+                  "key": "landmark",
+                  "value": "Near Shankar Nagar Square",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", ""]
+            },
+            "description": "Citizen reporting endpoint for new civic grievance. Accepts multipart form data with proof image."
+          }
+        },
+        {
+          "name": "8. List Complaints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/?status=Assigned&ward=2",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", ""],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Assigned"
+                },
+                {
+                  "key": "ward",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "List civic complaints with role-based filtering (Citizen: own, Worker: assigned, Dept Officer: department/ward, Admin: city-wide)."
+          }
+        },
+        {
+          "name": "9. Get Complaint Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", "{{sample_complaint_id}}", ""]
+            },
+            "description": "Retrieves comprehensive complaint record including timeline status history, attached photos, and worker details."
+          }
+        },
+        {
+          "name": "10. Update Complaint Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In-Progress\",\n  \"note\": \"Dispatched road repair crew with bitumen mixture.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/status/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", "{{sample_complaint_id}}", "status", ""]
+            },
+            "description": "Transitions complaint status (e.g. In-Progress, Work Done) with audit notes. Work Done requires proof photo."
+          }
+        },
+        {
+          "name": "11. Assign Worker to Complaint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worker_id\": {{sample_worker_id}},\n  \"override\": false,\n  \"override_reason\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/assign/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", "{{sample_complaint_id}}", "assign", ""]
+            },
+            "description": "Assigns municipal field worker to complaint. Enforces department and ward matching."
+          }
+        },
+        {
+          "name": "12. Upload Resolution Proof",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "proof",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/proof-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", "{{sample_complaint_id}}", "proof-upload", ""]
+            },
+            "description": "Uploads resolution photographic proof showing fixed issue."
+          }
+        },
+        {
+          "name": "13. Citizen Verify Resolution",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accepted\": true,\n  \"rating\": 5,\n  \"feedback\": \"Pothole completely filled and road is level. Great work!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/verify/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "complaints", "{{sample_complaint_id}}", "verify", ""]
+            },
+            "description": "Citizen resolution verification. If accepted, marks Closed with 1-5 rating. If rejected, reopens ticket."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Field Worker Operations",
+      "item": [
+        {
+          "name": "14. List Assigned Worker Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/tasks/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "worker", "tasks", ""]
+            },
+            "description": "Retrieves active task queue for logged-in municipal field worker."
+          }
+        },
+        {
+          "name": "15. Check Available Field Workers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/available/?complaint_id={{sample_complaint_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "worker", "available", ""],
+              "query": [
+                {
+                  "key": "complaint_id",
+                  "value": "{{sample_complaint_id}}"
+                }
+              ]
+            },
+            "description": "Lists eligible field workers for assignment with active workload task count."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Municipal Dashboard Analytics",
+      "item": [
+        {
+          "name": "16. Get Department KPIs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/kpi/?ward_id=2",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "kpi", ""],
+              "query": [
+                {
+                  "key": "ward_id",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "Executive KPI overview: total volume, pending, in-progress, resolved, rejected, avg resolution days, and severity distribution."
+          }
+        },
+        {
+          "name": "17. Get Ward Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/ward-stats/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "ward-stats", ""]
+            },
+            "description": "Comparative grievance metrics across all 4 municipal wards."
+          }
+        },
+        {
+          "name": "18. Get Resolution Trends",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/trends/?groupby=day",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "trends", ""],
+              "query": [
+                {
+                  "key": "groupby",
+                  "value": "day"
+                }
+              ]
+            },
+            "description": "Time-series trend analysis comparing submitted vs resolved issues over time."
+          }
+        },
+        {
+          "name": "19. Get Worker Workload Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/workers/?ward_id=2",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "workers", ""],
+              "query": [
+                {
+                  "key": "ward_id",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "Field worker capacity monitoring: active tasks, completed this week, and average turnaround days."
+          }
+        },
+        {
+          "name": "20. Get High Priority Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/high-priority/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "high-priority", ""]
+            },
+            "description": "Escalation list of High and Critical unresolved complaints sorted by days open."
+          }
+        },
+        {
+          "name": "21. Get Pending Validation Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/pending-validation/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "pending-validation", ""]
+            },
+            "description": "Review queue for complaints flagged by AI requiring officer confirmation."
+          }
+        },
+        {
+          "name": "22. Manual Validate / Reject Complaint",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"validate\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/complaints/{{sample_complaint_id}}/validate/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "complaints", "{{sample_complaint_id}}", "validate", ""]
+            },
+            "description": "Officer triage action: validates ticket for dispatch or rejects as invalid with reason."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Admin Worker Management",
+      "item": [
+        {
+          "name": "23. List All Workers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/?ward_id=2&status=active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "workers", ""],
+              "query": [
+                {
+                  "key": "ward_id",
+                  "value": "2"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            },
+            "description": "Lists field workers with task loads. Scoped to officer department, or all for admin."
+          }
+        },
+        {
+          "name": "24. Create Field Worker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Santosh Rao\",\n  \"mobile\": \"9812345678\",\n  \"employee_id\": \"NMC-WRK-050\",\n  \"department\": 1,\n  \"ward\": 2,\n  \"designation\": \"Field Pothole Inspector\",\n  \"email\": \"santosh.rao@nmc.gov.in\",\n  \"password\": \"WorkerPassword@123\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "workers", ""]
+            },
+            "description": "Admin and Dept Officer endpoint to register a new municipal field worker."
+          }
+        },
+        {
+          "name": "25. Update Field Worker",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designation\": \"Senior Maintenance Supervisor\",\n  \"ward\": 3,\n  \"status\": \"active\",\n  \"email\": \"santosh.updated@nmc.gov.in\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/{{sample_worker_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "workers", "{{sample_worker_id}}", ""]
+            },
+            "description": "Updates worker profile (ward, designation, status, email). Mobile and employee_id are read-only."
+          }
+        }
+      ]
+    }
+  ]
+}

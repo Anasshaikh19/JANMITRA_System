@@ -1,0 +1,2876 @@
+{
+  "info": {
+    "_postman_id": "cd2479e9-62ff-5524-ad61-0b1b8f17c917",
+    "name": "JANMITRA \u2014 Nagpur Municipal Corporation API Collection",
+    "description": "Audited and verified Postman API Collection (v2.1.0) for the JANMITRA Civic Complaint Management System (Nagpur Municipal Corporation).\n\n### Features & Security:\n- Automated Bearer JWT Injection via collection pre-request script\n- Genuine public routes (health, login, register, refresh, public meta) bypass auth headers\n- Safe JWT token persistence on login and refresh (never overwrites valid tokens on failure)\n- Full multipart/form-data support for civic complaint submission and worker proof-of-work\n- Specific assertion tests validating status codes, response structures, and error responses\n- Complete coverage across Citizen, Field Worker, Department Officer, and Municipal Administrator roles",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sample_complaint_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sample_worker_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sample_notification_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// JANMITRA Automatic Bearer JWT Injection",
+          "// Safely extract access_token from active variable scope (local -> data -> environment -> collection -> globals)",
+          "const rawToken = pm.variables.get(\"access_token\");",
+          "const token = (typeof rawToken === \"string\") ? rawToken.trim() : \"\";",
+          "",
+          "// Safely normalize request URL path",
+          "let urlPath = \"\";",
+          "try {",
+          "    if (typeof pm.request.url.getPath === \"function\") {",
+          "        urlPath = pm.request.url.getPath();",
+          "    } else if (Array.isArray(pm.request.url.path)) {",
+          "        urlPath = pm.request.url.path.join(\"/\");",
+          "    } else {",
+          "        urlPath = String(pm.request.url || \"\");",
+          "    }",
+          "} catch (e) {",
+          "    urlPath = String(pm.request.url || \"\");",
+          "}",
+          "",
+          "// Normalize path: lowercase and strip query string",
+          "const cleanPath = urlPath.split(\"?\")[0].toLowerCase();",
+          "",
+          "// Authoritative public endpoints in JANMITRA backend with AllowAny permission:",
+          "// 1. Health checks: /api/v1/health/, /api/health/",
+          "// 2. Authentication: /api/v1/auth/login/, /api/v1/auth/register/, /api/v1/auth/refresh/, /api/v1/auth/token/refresh/",
+          "// 3. Public metadata: /api/v1/meta/categories/, /api/v1/meta/wards/, /api/v1/complaints/meta/categories/, /api/v1/complaints/meta/wards/",
+          "const isPublicEndpoint = (",
+          "    cleanPath.includes(\"api/v1/health\") ||",
+          "    cleanPath.includes(\"api/health\") ||",
+          "    cleanPath.includes(\"api/v1/auth/login\") ||",
+          "    cleanPath.includes(\"api/v1/auth/register\") ||",
+          "    cleanPath.includes(\"api/v1/auth/refresh\") ||",
+          "    cleanPath.includes(\"api/v1/auth/token/refresh\") ||",
+          "    cleanPath.includes(\"api/v1/meta/categories\") ||",
+          "    cleanPath.includes(\"api/v1/meta/wards\") ||",
+          "    cleanPath.includes(\"complaints/meta/categories\") ||",
+          "    cleanPath.includes(\"complaints/meta/wards\")",
+          ");",
+          "",
+          "// Check if an Authorization header already exists",
+          "const existingAuthHeader = pm.request.headers.get(\"Authorization\");",
+          "",
+          "// Inject Bearer header only if non-empty token, route is protected, and header is not duplicated",
+          "if (token && token.length > 0 && !isPublicEndpoint && !existingAuthHeader) {",
+          "    pm.request.headers.add({",
+          "        key: \"Authorization\",",
+          "        value: \"Bearer \" + token",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints for Citizen, Field Worker, Department Officer, and Admin roles.",
+      "item": [
+        {
+          "name": "1. Login (Citizen / Staff / Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Response contains JWT tokens and user metadata\", function () {",
+                  "        const res = pm.response.json();",
+                  "        pm.expect(res).to.have.property(\"access\");",
+                  "        pm.expect(res).to.have.property(\"refresh\");",
+                  "        pm.expect(res).to.have.property(\"user\");",
+                  "        if (res.access && typeof res.access === \"string\" && res.access.length > 0) {",
+                  "            pm.collectionVariables.set(\"access_token\", res.access);",
+                  "            if (pm.environment) pm.environment.set(\"access_token\", res.access);",
+                  "        }",
+                  "        if (res.refresh && typeof res.refresh === \"string\" && res.refresh.length > 0) {",
+                  "            pm.collectionVariables.set(\"refresh_token\", res.refresh);",
+                  "            if (pm.environment) pm.environment.set(\"refresh_token\", res.refresh);",
+                  "        }",
+                  "    });",
+                  "    pm.test(\"User profile contains identity and role fields\", function () {",
+                  "        const res = pm.response.json();",
+                  "        pm.expect(res.user).to.have.property(\"id\");",
+                  "        pm.expect(res.user).to.have.property(\"role\");",
+                  "        pm.expect(res.user).to.have.property(\"mobile\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates user via mobile and password, returning JWT access & refresh tokens. Automatically sets access_token.\n\n**Authentication**: Public (AllowAny)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9800000001\",\n  \"password\": \"Demo@12345\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Register Citizen",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Citizen registered and tokens returned\", function () {",
+                  "        const res = pm.response.json();",
+                  "        const token = res.access || (res.tokens && res.tokens.access);",
+                  "        const refresh = res.refresh || (res.tokens && res.tokens.refresh);",
+                  "        if (token && typeof token === \"string\" && token.length > 0) {",
+                  "            pm.collectionVariables.set(\"access_token\", token);",
+                  "            if (pm.environment) pm.environment.set(\"access_token\", token);",
+                  "        }",
+                  "        if (refresh && typeof refresh === \"string\" && refresh.length > 0) {",
+                  "            pm.collectionVariables.set(\"refresh_token\", refresh);",
+                  "            if (pm.environment) pm.environment.set(\"refresh_token\", refresh);",
+                  "        }",
+                  "        pm.expect(res).to.have.property(\"role\");",
+                  "        pm.expect(res.role).to.eql(\"citizen\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a new citizen with mobile number, full name, municipal ward (1-4), and password. Returns access and refresh JWT tokens.\n\n**Authentication**: Public (AllowAny)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9820000099\",\n  \"name\": \"Aarav Citizen\",\n  \"password\": \"Demo@12345\",\n  \"ward\": 1,\n  \"email\": \"aarav.citizen@example.com\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Refresh JWT Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Access token rotated successfully\", function () {",
+                  "        const res = pm.response.json();",
+                  "        pm.expect(res).to.have.property(\"access\");",
+                  "        if (res.access && typeof res.access === \"string\" && res.access.length > 0) {",
+                  "            pm.collectionVariables.set(\"access_token\", res.access);",
+                  "            if (pm.environment) pm.environment.set(\"access_token\", res.access);",
+                  "        }",
+                  "        if (res.refresh && typeof res.refresh === \"string\" && res.refresh.length > 0) {",
+                  "            pm.collectionVariables.set(\"refresh_token\", res.refresh);",
+                  "            if (pm.environment) pm.environment.set(\"refresh_token\", res.refresh);",
+                  "        }",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates an expired access token using the stored refresh_token.\n\n**Authentication**: Public (AllowAny - requires refresh token in payload)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Retrieve Current User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/profile/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Retrieves the profile and role details of the authenticated user (Citizen, Worker, Officer, or Admin).\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "5. Update User Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/profile/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Updates current citizen profile details (full name, email, residential ward).\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Aarav Updated Citizen\",\n  \"email\": \"aarav.updated@example.com\",\n  \"ward\": 2\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Update FCM Push Device Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/fcm-token/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "fcm-token"
+              ]
+            },
+            "description": "Registers or updates the mobile device FCM token for receiving push notifications.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcm_token\": \"fcm_sample_device_registration_token_xyz987\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Login with Invalid Password (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Returns descriptive error detail\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.satisfy(function (r) {",
+                  "        return r.detail || r.error || r.errors;",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Negative test verifying that invalid credentials return HTTP 400 Bad Request with descriptive error without overwriting stored tokens.\n\n**Authentication**: Public (AllowAny)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9800000001\",\n  \"password\": \"WrongPassword123!\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Complaints",
+      "description": "Civic grievances management, submission, retrieval, audit timeline, spatial nearby queries, and resolution verification.",
+      "item": [
+        {
+          "name": "1. Submit Civic Grievance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Grievance created with tracking ID and initial status\", function () {",
+                  "        const res = pm.response.json();",
+                  "        pm.expect(res).to.have.property(\"id\");",
+                  "        pm.expect(res).to.have.property(\"tracking_id\");",
+                  "        pm.expect(res).to.have.property(\"status\");",
+                  "        if (res.id) {",
+                  "            pm.collectionVariables.set(\"sample_complaint_id\", String(res.id));",
+                  "            if (pm.environment) pm.environment.set(\"sample_complaint_id\", String(res.id));",
+                  "        }",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints"
+              ]
+            },
+            "description": "Submits a new civic complaint via multipart/form-data with evidence photo(s), title, description (min 20 chars), category (1-4), ward (1-4), location_lat, and location_lng. Automatically sets sample_complaint_id.\n\n**Authentication**: Requires Bearer JWT (Role: Citizen)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Severe road crater near Shankar Nagar Square",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Deep road crater causing traffic slowdown and safety hazards near Shankar Nagar square.",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "ward",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "West High Court Rd, Shankar Nagar, Nagpur",
+                  "type": "text"
+                },
+                {
+                  "key": "location_lat",
+                  "value": "21.1396",
+                  "type": "text"
+                },
+                {
+                  "key": "location_lng",
+                  "value": "79.0624",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample_pothole_evidence.jpg"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. List Complaints (with Filters)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/?status=Submitted&ward=2&category=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Submitted"
+                },
+                {
+                  "key": "ward",
+                  "value": "2"
+                },
+                {
+                  "key": "category",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Lists complaints filtered by ward, category, department, or status. Citizen sees own, officers see department/ward issues.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Citizen My Complaints List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/my_complaints/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "my_complaints"
+              ]
+            },
+            "description": "Dedicated view listing all civic grievances filed by the currently logged-in citizen.\n\n**Authentication**: Requires Bearer JWT (Role: Citizen)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Retrieve Complaint Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}"
+              ]
+            },
+            "description": "Fetches full complaint details including status, worker assignment, images, and location point.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated - Role scoped)"
+          },
+          "response": []
+        },
+        {
+          "name": "5. Update Complaint Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/status/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "status"
+              ]
+            },
+            "description": "Updates complaint status (e.g. In Progress, Resolved). Restricted to assigned worker or supervising officer.\n\n**Authentication**: Requires Bearer JWT (Role: Worker or Dept Officer)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In Progress\",\n  \"remarks\": \"Field crew has mobilized to the site.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Assign Worker to Complaint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/assign/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "assign"
+              ]
+            },
+            "description": "Assigns a field worker to a complaint ticket. Restricted to Department Officer or Admin.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"worker_id\": \"{{sample_worker_id}}\",\n  \"override_reason\": \"\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Upload Resolution Proof",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/proof-upload/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "proof-upload"
+              ]
+            },
+            "description": "Worker uploads photographic resolution evidence upon job completion (multipart fields: notes and proof image).\n\n**Authentication**: Requires Bearer JWT (Role: Worker or Supervising Officer)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "notes",
+                  "value": "Pothole asphalt repair completed.",
+                  "type": "text"
+                },
+                {
+                  "key": "proof",
+                  "type": "file",
+                  "src": "sample_repair_proof.jpg"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Citizen Verify Resolution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/verify/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "verify"
+              ]
+            },
+            "description": "Citizen reviews proof of work. action='accept' with rating 1-5 closes the ticket; action='reject' with reason reopens it without resetting SLA.\n\n**Authentication**: Requires Bearer JWT (Role: Citizen owner)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"accept\",\n  \"rating\": 5,\n  \"feedback\": \"Pothole repaired quickly and completely. Thank you NMC!\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Citizen Resolution Rating",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/rate/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "rate"
+              ]
+            },
+            "description": "Citizen submits 1 to 5 star rating (citizen_rating) and quality feedback (citizen_feedback) after resolution.\n\n**Authentication**: Requires Bearer JWT (Role: Citizen owner)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizen_rating\": 5,\n  \"citizen_feedback\": \"Rapid response and excellent road surfacing quality.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "10. Complaint Audit Timeline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/{{sample_complaint_id}}/timeline/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "timeline"
+              ]
+            },
+            "description": "Returns chronological timeline history of all status changes, worker assignments, and verification actions.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "11. Query Nearby Complaints (Spatial)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/nearby/?lat=21.1458&lng=79.0882&radius_km=2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "21.1458"
+                },
+                {
+                  "key": "lng",
+                  "value": "79.0882"
+                },
+                {
+                  "key": "radius_km",
+                  "value": "2"
+                }
+              ]
+            },
+            "description": "PostGIS spatial query returning civic issues within a specified radius from given coordinates.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "12. Export Complaints GeoJSON",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/geojson/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints",
+                "geojson"
+              ]
+            },
+            "description": "Exports complaints as a GeoJSON FeatureCollection for Mapbox or Leaflet spatial rendering.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "13. Submit Complaint Without Images (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Returns validation error for missing required images\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property(\"images\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/complaints/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "complaints"
+              ]
+            },
+            "description": "Negative test verifying that submitting a complaint without required evidence images fails with HTTP 400 Bad Request.\n\n**Authentication**: Requires Bearer JWT (Role: Citizen)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Broken street light pole\",\n  \"description\": \"Streetlight fixture completely unpowered at street corner.\",\n  \"category\": 4,\n  \"ward\": 1,\n  \"address\": \"Dharampeth Main Road, Nagpur\",\n  \"location_lat\": 21.1412,\n  \"location_lng\": 79.0689\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Worker",
+      "description": "Field worker operations: viewing assigned tasks, reporting status updates, and uploading proof of work.",
+      "item": [
+        {
+          "name": "1. Available Workers for Assignment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/available/?complaint_id={{sample_complaint_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "worker",
+                "available"
+              ],
+              "query": [
+                {
+                  "key": "complaint_id",
+                  "value": "{{sample_complaint_id}}"
+                }
+              ]
+            },
+            "description": "Returns active, available field workers matching the complaint's department and ward.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Field Worker Task List",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/tasks/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "worker",
+                "tasks"
+              ]
+            },
+            "description": "Lists all active tasks assigned to the currently logged-in field worker (scoped to worker department & ward).\n\n**Authentication**: Requires Bearer JWT (Role: Field Worker)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Field Worker Task Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/tasks/{{sample_complaint_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "worker",
+                "tasks",
+                "{{sample_complaint_id}}"
+              ]
+            },
+            "description": "Retrieves specific task details, citizen location address, and repair instructions for worker.\n\n**Authentication**: Requires Bearer JWT (Role: Field Worker assigned)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Update Task Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/tasks/{{sample_complaint_id}}/status/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "worker",
+                "tasks",
+                "{{sample_complaint_id}}",
+                "status"
+              ]
+            },
+            "description": "Field worker transitions task status to In-Progress.\n\n**Authentication**: Requires Bearer JWT (Role: Field Worker assigned)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In-Progress\",\n  \"remarks\": \"Materials sourced, beginning asphalt compaction.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Upload Task Completion Proof",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/worker/tasks/{{sample_complaint_id}}/proof/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "worker",
+                "tasks",
+                "{{sample_complaint_id}}",
+                "proof"
+              ]
+            },
+            "description": "Uploads photo proof of completed field resolution and transitions status to 'Work Done'.\n\n**Authentication**: Requires Bearer JWT (Role: Field Worker assigned)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "remarks",
+                  "value": "Repairs finished according to NMC road specs.",
+                  "type": "text"
+                },
+                {
+                  "key": "proof",
+                  "type": "file",
+                  "src": "resolution_photo.jpg"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Command Center KPIs, ward performance analytics, submission trends, overdue tickets, and AI fraud validation.",
+      "item": [
+        {
+          "name": "1. Department Executive KPIs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/kpi/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "kpi"
+              ]
+            },
+            "description": "City-wide executive KPIs: Total complaints, Pending, In Progress, Resolved, Breached, and SLA percentage.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Ward Statistics Breakdown",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/ward-stats/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "ward-stats"
+              ]
+            },
+            "description": "Complaint counts and resolution performance aggregated by municipal ward.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Submission & Resolution Trends",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/trends/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "trends"
+              ]
+            },
+            "description": "Temporal trend analytics showing daily grievance submissions vs daily resolutions.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Field Worker Workload Distribution",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/workers/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "workers"
+              ]
+            },
+            "description": "Distribution of open vs completed tickets across all active field workers.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "5. High Priority & Overdue Ledger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/high-priority/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "high-priority"
+              ]
+            },
+            "description": "Filtered list of Critical/High priority issues and tickets that have breached SLA.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "6. Overdue Complaints Ledger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/overdue/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "overdue"
+              ]
+            },
+            "description": "Tickets where elapsed resolution time has exceeded authoritative SLA limits without closure.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "7. AI Flagged / Pending Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/pending-validation/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "pending-validation"
+              ]
+            },
+            "description": "List of complaints flagged by AI pipeline for fraud or image anomaly requiring officer review.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "8. Officer Manual Validation Action",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/complaints/{{sample_complaint_id}}/validate/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "complaints",
+                "{{sample_complaint_id}}",
+                "validate"
+              ]
+            },
+            "description": "Supervising officer validates or rejects AI-flagged grievance (action: 'validate' or 'reject').\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"validate\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. Export Complaints CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Content-Type is text/csv\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/csv\");",
+                  "});",
+                  "pm.test(\"CSV response contains expected municipal header columns\", function () {",
+                  "    const csvText = pm.response.text();",
+                  "    pm.expect(csvText).to.include(\"Complaint ID\");",
+                  "    pm.expect(csvText).to.include(\"Status\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/export/?format=csv",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv"
+                }
+              ]
+            },
+            "description": "Generates streaming CSV export of complaints for municipal records.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "10. Dashboard Overview Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/overview/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "overview"
+              ]
+            },
+            "description": "Backward-compatible overview endpoint returning summary statistics across departments and wards.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "11. Ward Breakdown Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/wards/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "wards"
+              ]
+            },
+            "description": "Breakdown of complaint counts (total, pending, resolved) aggregated by ward.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "12. Category Breakdown Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/categories/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "categories"
+              ]
+            },
+            "description": "Distribution of complaints grouped by civic category.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative endpoints for managing field workers, global system SLA settings, complaints ledger, and master metadata.",
+      "item": [
+        {
+          "name": "1. List All Municipal Field Workers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "workers"
+              ]
+            },
+            "description": "Admin view listing all registered field workers with assigned departments and wards.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Create New Field Worker Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Worker account created with employee_id and metadata\", function () {",
+                  "        const res = pm.response.json();",
+                  "        pm.expect(res).to.have.property(\"id\");",
+                  "        pm.expect(res).to.have.property(\"employee_id\");",
+                  "        if (res.id) {",
+                  "            pm.collectionVariables.set(\"sample_worker_id\", String(res.id));",
+                  "            if (pm.environment) pm.environment.set(\"sample_worker_id\", String(res.id));",
+                  "        }",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "workers"
+              ]
+            },
+            "description": "Admin provisions a new field worker account.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Kavita Joshi\",\n  \"mobile\": \"9810050005\",\n  \"email\": \"kavita.joshi@janmitra.gov.in\",\n  \"department\": 1,\n  \"ward\": 1,\n  \"designation\": \"Road Maintenance Specialist\",\n  \"employee_id\": \"NMC-WRK-PWD-W1-05\",\n  \"password\": \"Demo@12345\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Retrieve Worker Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/{{sample_worker_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "workers",
+                "{{sample_worker_id}}"
+              ]
+            },
+            "description": "Admin / Officer fetches individual worker profile and active assignment counts.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Update Worker Attributes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/workers/{{sample_worker_id}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "workers",
+                "{{sample_worker_id}}"
+              ]
+            },
+            "description": "Admin / Officer reassigns worker ward, designation, or active status.\n\n**Authentication**: Requires Bearer JWT (Role: Dept Officer or Admin)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Active\",\n  \"ward\": 2,\n  \"designation\": \"Senior Field Specialist\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Retrieve Global SLA & System Settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/settings/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "settings"
+              ]
+            },
+            "description": "Admin fetches global SLA targets in hours and auto-close timeframe.\n\n**Authentication**: Requires Bearer JWT (Role: Superadmin)"
+          },
+          "response": []
+        },
+        {
+          "name": "6. Update Global System Settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/settings/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "settings"
+              ]
+            },
+            "description": "Admin updates global SLA target hours, auto-close timeframe, and broadcast message.\n\n**Authentication**: Requires Bearer JWT (Role: Superadmin)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sla_critical_hours\": 24,\n  \"sla_high_hours\": 48,\n  \"sla_medium_hours\": 72,\n  \"auto_close_hours\": 72,\n  \"broadcast_message\": \"NMC Pothole & Road Repair Drive Active Across Zone 1 & 2.\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Administrative Complaints Ledger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/complaints/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "complaints"
+              ]
+            },
+            "description": "Full administrative ledger of all city complaints with pagination and deep filters.\n\n**Authentication**: Requires Bearer JWT (Role: Superadmin)"
+          },
+          "response": []
+        },
+        {
+          "name": "8. Master Categories List (CRUD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories"
+              ]
+            },
+            "description": "Master CRUD category list mapping categories to departments.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "9. Master Category Detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/categories/1/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "categories",
+                "1"
+              ]
+            },
+            "description": "Retrieve single category record.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "10. Master Wards List (CRUD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/wards/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wards"
+              ]
+            },
+            "description": "Master CRUD list of municipal wards.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "11. Master Ward Detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/wards/1/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wards",
+                "1"
+              ]
+            },
+            "description": "Retrieve single ward record.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "System & Metadata",
+      "description": "Public system health checks, container orchestrator probes, and public dropdown master metadata.",
+      "item": [
+        {
+          "name": "1. System Health Check (Production-safe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Health probe reports service connections\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property(\"status\");",
+                  "    pm.expect(res).to.have.property(\"services\");",
+                  "    pm.expect(res.services).to.have.property(\"database\");",
+                  "    pm.expect(res.services).to.have.property(\"redis\");",
+                  "    pm.expect(res.services).to.have.property(\"celery\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/health/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Production-safe health probe inspecting Database (User.count), Redis (ping), and Celery (control.ping) independently.\n\n**Authentication**: Public (AllowAny)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Legacy Health Check Route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Health probe reports service connections\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property(\"status\");",
+                  "    pm.expect(res).to.have.property(\"services\");",
+                  "    pm.expect(res.services).to.have.property(\"database\");",
+                  "    pm.expect(res.services).to.have.property(\"redis\");",
+                  "    pm.expect(res.services).to.have.property(\"celery\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/health/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Backward-compatible container orchestrator health check route.\n\n**Authentication**: Public (AllowAny)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Public Municipal Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/meta/categories/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meta",
+                "categories"
+              ]
+            },
+            "description": "Public metadata endpoint listing the 4 canonical municipal categories for frontend dropdowns.\n\n**Authentication**: Public (AllowAny)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Public Municipal Wards",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/meta/wards/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meta",
+                "wards"
+              ]
+            },
+            "description": "Public metadata endpoint listing the 4 configured municipal wards for registration and reporting.\n\n**Authentication**: Public (AllowAny)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "User in-app notifications stream, individual read acknowledgments, and bulk mark-all-read operations.",
+      "item": [
+        {
+          "name": "1. List User In-App Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response contains notifications list\", function () {",
+                  "    const res = pm.response.json();",
+                  "    const items = Array.isArray(res) ? res : (res && Array.isArray(res.results) ? res.results : []);",
+                  "    if (items.length > 0 && items[0].id) {",
+                  "        pm.collectionVariables.set(\"sample_notification_id\", String(items[0].id));",
+                  "        if (pm.environment) pm.environment.set(\"sample_notification_id\", String(items[0].id));",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifications/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "description": "Retrieves in-app notifications for the logged-in user (citizen updates, officer alerts, worker dispatches). Automatically captures sample_notification_id.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Mark Notification as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifications/{{sample_notification_id}}/mark_as_read/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "{{sample_notification_id}}",
+                "mark_as_read"
+              ]
+            },
+            "description": "Marks a specific user notification as read.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Mark All Notifications as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code indicates success\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    if (pm.response.code !== 204) {",
+                  "        pm.response.to.be.json;",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notifications/mark_all_as_read/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications",
+                "mark_all_as_read"
+              ]
+            },
+            "description": "Marks all unread notifications for the calling user as read.\n\n**Authentication**: Requires Bearer JWT (IsAuthenticated)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

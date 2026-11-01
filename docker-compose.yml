@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # PostgreSQL with PostGIS Spatial Extension
+  # ==============================================================================
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: janmitra_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-janmitra_db}
+      POSTGRES_USER: ${POSTGRES_USER:-janmitra_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-janmitra_secure_password_2024}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-janmitra_user} -d ${POSTGRES_DB:-janmitra_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - janmitra_network
+
+  # ==============================================================================
+  # Redis - Cache & Celery Message Broker
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: janmitra_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - janmitra_network
+
+  # ==============================================================================
+  # Backend - Django 4.2 REST Framework API with GeoDjango
+  # ==============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: janmitra_backend
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-resolveIT.settings.local}
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production-janmitra-nmc-nagpur-2024}
+      DEBUG: ${DEBUG:-True}
+      POSTGRES_DB: ${POSTGRES_DB:-janmitra_db}
+      POSTGRES_USER: ${POSTGRES_USER:-janmitra_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-janmitra_secure_password_2024}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - janmitra_network
+
+  # ==============================================================================
+  # Celery Worker - Asynchronous Task Processing
+  # ==============================================================================
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: janmitra_celery
+    restart: unless-stopped
+    command: celery -A resolveIT worker -l info
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-resolveIT.settings.local}
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production-janmitra-nmc-nagpur-2024}
+      POSTGRES_DB: ${POSTGRES_DB:-janmitra_db}
+      POSTGRES_USER: ${POSTGRES_USER:-janmitra_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-janmitra_secure_password_2024}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - janmitra_network
+
+  # ==============================================================================
+  # Celery Beat - Periodic Scheduled Tasks
+  # ==============================================================================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: janmitra_celery_beat
+    restart: unless-stopped
+    command: celery -A resolveIT beat -l info
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-resolveIT.settings.local}
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-change-this-in-production-janmitra-nmc-nagpur-2024}
+      POSTGRES_DB: ${POSTGRES_DB:-janmitra_db}
+      POSTGRES_USER: ${POSTGRES_USER:-janmitra_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-janmitra_secure_password_2024}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - janmitra_network
+
+  # ==============================================================================
+  # Frontend - Vite + React + Tailwind CSS
+  # ==============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: janmitra_frontend
+    restart: unless-stopped
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - janmitra_network
+
+# ==============================================================================
+# Persistent Named Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ==============================================================================
+# Shared Bridge Network
+# ==============================================================================
+networks:
+  janmitra_network:
+    driver: bridge

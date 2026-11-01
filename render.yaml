@@ -1,0 +1,95 @@
+services:
+  # ==============================================================================
+  # Web Service: JANMITRA Django REST Framework Backend
+  # ==============================================================================
+  - type: web
+    name: resolveit-backend
+    runtime: python
+    rootDir: backend
+    region: oregon
+    plan: starter
+    buildCommand: "pip install -r requirements.txt && python manage.py check && python manage.py collectstatic --noinput"
+    preDeployCommand: "python manage.py migrate --noinput"
+    startCommand: "gunicorn resolveIT.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --threads 2"
+    healthCheckPath: /api/v1/health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: DJANGO_SETTINGS_MODULE
+        value: resolveIT.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: PORT
+        value: "8000"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resolveit-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: resolveit-redis
+          property: connectionString
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # ==============================================================================
+  # Background Worker: Celery Task Processing (AI Routing & Notifications)
+  # ==============================================================================
+  - type: worker
+    name: resolveit-celery
+    runtime: python
+    rootDir: backend
+    region: oregon
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A resolveIT worker -l info --concurrency=2"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.10
+      - key: DJANGO_SETTINGS_MODULE
+        value: resolveIT.settings.production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: resolveit-backend
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resolveit-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: resolveit-redis
+          property: connectionString
+
+  # ==============================================================================
+  # Redis Key-Value Store: Celery Message Broker & Result Backend
+  # ==============================================================================
+  - type: keyvalue
+    name: resolveit-redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+# ==============================================================================
+# Managed PostgreSQL Database (with PostGIS support)
+# ==============================================================================
+databases:
+  - name: resolveit-postgres
+    databaseName: janmitra_db
+    user: janmitra_user
+    region: oregon
+    plan: starter
+    postgresMajorVersion: "15"
+    ipAllowList: []
