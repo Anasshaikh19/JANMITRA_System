@@ -2,11 +2,25 @@
 DRF Serializers for complaints app (JANMITRA - Nagpur Municipal Corporation).
 """
 
-import uuid
-from django.contrib.gis.geos import Point
+try:
+    from django.contrib.gis.geos import Point
+except Exception:
+    class Point:
+        def __init__(self, x=0, y=0, srid=4326):
+            self.x = x
+            self.y = y
+            self.srid = srid
+        def __str__(self):
+            return f"POINT ({self.x} {self.y})"
+
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
+
+try:
+    from rest_framework_gis.serializers import GeoFeatureModelSerializer
+except Exception:
+    class GeoFeatureModelSerializer(serializers.ModelSerializer):
+        pass
 
 from accounts.models import User
 from accounts.serializers import UserProfileSerializer

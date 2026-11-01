@@ -31,37 +31,64 @@ const normalizeRole = (value) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() => localStorage.getItem('janmitra_token') || null);
+  const [token, setToken] = useState(() => {
+    const saved = localStorage.getItem('janmitra_token');
+    if (!saved || saved === '[object Object]' || saved === 'null' || saved === 'undefined') {
+      return null;
+    }
+    return saved;
+  });
+
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('janmitra_user');
     if (!savedUser) return null;
     try {
-      return JSON.parse(savedUser);
+      const parsed = JSON.parse(savedUser);
+      return (parsed && typeof parsed === 'object') ? parsed : null;
     } catch {
       return null;
     }
   });
+
   const [role, setRole] = useState(() => {
     const savedRole = localStorage.getItem('janmitra_role');
     return normalizeRole(savedRole);
   });
 
-  const login = (newToken, userData = {}) => {
+  const login = (firstArg, secondArg) => {
+    let newToken = null;
+    let userData = {};
+    let rawRole = null;
+
+    if (firstArg && typeof firstArg === 'object') {
+      // Called with single object: data from backend or mock object
+      newToken = firstArg.access || firstArg.token || firstArg.tokens?.access || null;
+      userData = firstArg.user || firstArg;
+      rawRole = firstArg.role || userData?.role || userData?.portal || userData?.user_type || userData?.department || userData?.dept;
+    } else {
+      // Called with login(token, userData)
+      newToken = firstArg;
+      userData = secondArg || {};
+      rawRole = userData?.role || userData?.portal || userData?.user_type || userData?.department || userData?.dept;
+    }
+
+    const userRole = normalizeRole(rawRole);
     const normalizedUser = {
       ...userData,
-      role: normalizeRole(userData?.role || userData?.portal || userData?.user_type || userData?.department || userData?.dept),
+      role: userRole,
       dept: userData?.dept || userData?.department || null,
     };
-    const userRole = normalizedUser.role;
 
-    setToken(newToken);
+    const tokenStr = typeof newToken === 'string' ? newToken : (newToken ? JSON.stringify(newToken) : null);
+
+    setToken(tokenStr);
     setUser(normalizedUser);
     setRole(userRole);
 
-    if (newToken) {
-      localStorage.setItem('janmitra_token', newToken);
+    if (tokenStr) {
+      localStorage.setItem('janmitra_token', tokenStr);
     }
-    if (userData) {
+    if (normalizedUser) {
       localStorage.setItem('janmitra_user', JSON.stringify(normalizedUser));
     }
     if (userRole) {
@@ -78,9 +105,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('janmitra_refresh_token');
     localStorage.removeItem('janmitra_user');
     localStorage.removeItem('janmitra_role');
+
+    // Force redirection to login
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   };
 
-  const isAuthenticated = Boolean(token);
+  const isAuthenticated = Boolean(token && token !== '[object Object]' && token !== 'null');
 
   return (
     <AuthContext.Provider

@@ -3,7 +3,11 @@ GeoDjango Admin configuration for complaints app.
 """
 
 from django.contrib import admin
-from django.contrib.gis import admin as gis_admin
+try:
+    from django.contrib.gis import admin as gis_admin
+    BaseComplaintAdmin = gis_admin.GISModelAdmin
+except Exception:
+    BaseComplaintAdmin = admin.ModelAdmin
 from .models import (
     Category,
     Complaint,
@@ -50,7 +54,7 @@ class StatusHistoryInline(admin.TabularInline):
 
 
 @admin.register(Complaint)
-class ComplaintAdmin(gis_admin.GISModelAdmin):
+class ComplaintAdmin(BaseComplaintAdmin):
     """
     OpenStreetMap-powered GIS Admin for civic issue reporting in Nagpur.
     """

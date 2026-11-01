@@ -35,7 +35,8 @@ if not postgres_host:
 use_sqlite = (
     os.environ.get('USE_SQLITE_FOR_TESTS', '').lower() == 'true' or
     ('test' in sys.argv and not os.environ.get('POSTGRES_HOST')) or
-    (not postgres_host)
+    (not postgres_host) or
+    (not globals().get('HAS_GDAL', False))
 )
 
 if use_sqlite:

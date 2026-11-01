@@ -187,20 +187,8 @@ export const LoginPage = () => {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        // Fallback for local development if server unreachable
-        const fallbackUser = {
-          id: 'u-faizan-1',
-          name: 'Faizan Rayeen',
-          mobile: loginForm.mobile.trim() || '8767972843',
-          role: 'citizen',
-          ward: 'Ward 4 (Mangalwari / North Nagpur)'
-        };
-        await login({
-          token: 'mock-jwt-token-local',
-          role: 'citizen',
-          user: fallbackUser
-        });
-        handleRoleRedirect('citizen');
+        const errMsg = data.error || data.detail || (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : null) || 'Invalid mobile number or password.';
+        setApiError(errMsg);
         return;
       }
 
@@ -211,20 +199,8 @@ export const LoginPage = () => {
       const userRole = data.role || data.user?.role || 'citizen';
       handleRoleRedirect(userRole);
     } catch (err) {
-      console.warn('[Login Local Fallback]', err);
-      const fallbackUser = {
-        id: 'u-faizan-1',
-        name: 'Faizan Rayeen',
-        mobile: loginForm.mobile.trim() || '8767972843',
-        role: 'citizen',
-        ward: 'Ward 4 (Mangalwari / North Nagpur)'
-      };
-      await login({
-        token: 'mock-jwt-token-local',
-        role: 'citizen',
-        user: fallbackUser
-      });
-      handleRoleRedirect('citizen');
+      console.error('[Login Error]', err);
+      setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
     } finally {
       setIsLoading(false);
     }
@@ -260,20 +236,8 @@ export const LoginPage = () => {
       const regData = await regResponse.json().catch(() => ({}));
 
       if (!regResponse.ok) {
-        // Fallback for seamless local test run: create local citizen session
-        const fallbackUser = {
-          id: 'u-faizan-' + Date.now(),
-          name: registerForm.name.trim() || 'Faizan Rayeen',
-          mobile: registerForm.mobile.trim() || '8767972843',
-          ward: registerForm.ward || 'Ward 4 (Mangalwari / North Nagpur)',
-          role: 'citizen'
-        };
-        await login({
-          token: 'mock-jwt-token-local',
-          role: 'citizen',
-          user: fallbackUser
-        });
-        handleRoleRedirect('citizen');
+        const errMsg = regData.error || regData.detail || (typeof regData.errors === 'object' ? Object.values(regData.errors).flat().join(' ') : null) || 'Registration failed. Please check your inputs.';
+        setApiError(errMsg);
         return;
       }
 
@@ -299,20 +263,8 @@ export const LoginPage = () => {
         handleRoleRedirect('citizen');
       }
     } catch (err) {
-      console.warn('[Register Local Fallback]', err);
-      const fallbackUser = {
-        id: 'u-faizan-' + Date.now(),
-        name: registerForm.name.trim() || 'Faizan Rayeen',
-        mobile: registerForm.mobile.trim() || '8767972843',
-        ward: registerForm.ward || 'Ward 4 (Mangalwari / North Nagpur)',
-        role: 'citizen'
-      };
-      await login({
-        token: 'mock-jwt-token-local',
-        role: 'citizen',
-        user: fallbackUser
-      });
-      handleRoleRedirect('citizen');
+      console.error('[Register Error]', err);
+      setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
     } finally {
       setIsLoading(false);
     }
@@ -733,44 +685,47 @@ export const LoginPage = () => {
           {/* Quick Dev Switcher */}
           <div className="mt-5 pt-4 border-t border-slate-100">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              ⚡ Quick Test Login (Direct Portal Entry)
+              ⚡ Quick Test Login (Seeded Demo Accounts)
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
+                  setLoginForm({ mobile: '9820000001', password: 'Demo@12345' });
                   login({
-                    token: 'jwt-faizan-token',
+                    token: 'jwt-citizen-demo',
                     role: 'citizen',
-                    user: { id: 'u-faizan-1', name: 'Faizan Rayeen', mobile: '8767972843', role: 'citizen', ward: 'Ward 4 (Mangalwari / North Nagpur)' }
+                    user: { id: 'u-citizen-1', name: 'Citizen Demo', mobile: '9820000001', role: 'citizen', ward: 1 }
                   });
                   navigate('/citizen');
                 }}
                 className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200/60 flex items-center justify-center gap-1.5"
               >
-                <span>👤</span> Faizan (Citizen)
+                <span>👤</span> Citizen (Ward 1)
               </button>
               <button
                 type="button"
                 onClick={() => {
+                  setLoginForm({ mobile: '9800000001', password: 'Demo@12345' });
                   login({
-                    token: 'jwt-officer-token',
+                    token: 'jwt-officer-demo',
                     role: 'officer',
-                    user: { id: 'u-officer-1', name: 'Officer Patil', mobile: '9823011223', role: 'officer', department: 'PWD' }
+                    user: { id: 'u-officer-1', name: 'Rajesh Kumar (PWD)', mobile: '9800000001', role: 'officer', department: 'PWD' }
                   });
                   navigate('/officer');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition border border-cyan-200/60 flex items-center justify-center gap-1.5"
+                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200/60 flex items-center justify-center gap-1.5"
               >
-                <span>🏢</span> Officer Portal
+                <span>🏢</span> Officer (PWD)
               </button>
               <button
                 type="button"
                 onClick={() => {
+                  setLoginForm({ mobile: '9810010001', password: 'Demo@12345' });
                   login({
-                    token: 'jwt-worker-token',
+                    token: 'jwt-worker-demo',
                     role: 'worker',
-                    user: { id: 'u-worker-1', name: 'Suresh Kamble', mobile: '9822345671', role: 'worker', department: 'PWD', ward: 'Ward 4' }
+                    user: { id: 'u-worker-1', name: 'Field Worker PWD', mobile: '9810010001', role: 'worker', department: 'PWD', ward: 1 }
                   });
                   navigate('/worker');
                 }}
@@ -781,16 +736,17 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
+                  setLoginForm({ mobile: 'admin@janmitra.gov.in', password: 'Demo@12345' });
                   login({
-                    token: 'jwt-admin-token',
+                    token: 'jwt-admin-demo',
                     role: 'admin',
-                    user: { id: 'u-admin-1', name: 'Admin (Central Command)', mobile: '9999999999', role: 'admin' }
+                    user: { id: 'u-admin-1', name: 'Central Admin', mobile: '9800000000', email: 'admin@janmitra.gov.in', role: 'admin' }
                   });
                   navigate('/admin');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 transition border border-slate-200 flex items-center justify-center gap-1.5"
+                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200/60 flex items-center justify-center gap-1.5"
               >
-                <span>🏛️</span> Admin Portal
+                <span>🏛️</span> Admin (HQ)
               </button>
             </div>
           </div>

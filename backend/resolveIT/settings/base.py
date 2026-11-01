@@ -40,6 +40,53 @@ SECRET_KEY = os.environ.get(
     'django-insecure-change-this-in-production-janmitra-nmc-nagpur-2024'
 )
 
+# Check if GDAL is available on this system
+HAS_GDAL = False
+try:
+    from django.contrib.gis.gdal.libgdal import lib_name
+    HAS_GDAL = bool(lib_name)
+except Exception:
+    HAS_GDAL = False
+
+if not HAS_GDAL:
+    import sys, types
+    from django.db import models as dj_models
+
+    class MockPointField(dj_models.CharField):
+        description = "Mock Point Field for non-GDAL environments"
+        def __init__(self, *args, **kwargs):
+            kwargs.pop('srid', None)
+            kwargs.pop('geography', None)
+            kwargs.pop('spatial_index', None)
+            kwargs.setdefault('max_length', 255)
+            kwargs.setdefault('default', '')
+            super().__init__(*args, **kwargs)
+        def deconstruct(self):
+            name, path, args, kwargs = super().deconstruct()
+            return name, path, args, kwargs
+
+    gis_db_mod = types.ModuleType('django.contrib.gis.db')
+    gis_models_mod = types.ModuleType('django.contrib.gis.db.models')
+    for attr in dir(dj_models):
+        setattr(gis_models_mod, attr, getattr(dj_models, attr))
+
+    gis_fields_mod = types.ModuleType('django.contrib.gis.db.models.fields')
+    gis_fields_mod.PointField = MockPointField
+    gis_fields_mod.GeometryField = MockPointField
+    gis_models_mod.PointField = MockPointField
+    gis_models_mod.GeometryField = MockPointField
+    gis_models_mod.fields = gis_fields_mod
+    gis_db_mod.models = gis_models_mod
+
+    sys.modules['django.contrib.gis.db'] = gis_db_mod
+    sys.modules['django.contrib.gis.db.models'] = gis_models_mod
+    sys.modules['django.contrib.gis.db.models.fields'] = gis_fields_mod
+    try:
+        import django.contrib.gis as gis_pkg
+        gis_pkg.db = gis_db_mod
+    except Exception:
+        pass
+
 # Application definition
 INSTALLED_APPS = [
     # Django Built-in Apps
@@ -49,13 +96,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # GeoDjango / PostGIS Spatial Support
-    'django.contrib.gis',
+]
 
+if HAS_GDAL:
+    INSTALLED_APPS.append('django.contrib.gis')
+
+INSTALLED_APPS.extend([
     # Third-Party Apps
     'rest_framework',
-    'rest_framework_gis',
+])
+
+if HAS_GDAL:
+    INSTALLED_APPS.append('rest_framework_gis')
+
+INSTALLED_APPS.extend([
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
@@ -68,7 +122,7 @@ INSTALLED_APPS = [
     'complaints.apps.ComplaintsConfig',
     'dashboard.apps.DashboardConfig',
     'notifications.apps.NotificationsConfig',
-]
+])
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

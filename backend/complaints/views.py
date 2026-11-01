@@ -4,9 +4,20 @@ Views and API ViewSets for complaints app (JANMITRA - Nagpur Municipal Corporati
 
 import logging
 import uuid
-from datetime import datetime
-from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D
+try:
+    from django.contrib.gis.geos import Point
+    from django.contrib.gis.measure import D
+except Exception:
+    class Point:
+        def __init__(self, x=0, y=0, srid=4326):
+            self.x = x
+            self.y = y
+            self.srid = srid
+        def __str__(self):
+            return f"POINT ({self.x} {self.y})"
+    class D:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
@@ -55,8 +66,8 @@ from .tasks import (
 
 logger = logging.getLogger('complaints')
 
-# When complaint is saved, offload AI to Celery:
-process_complaint_ai.delay(complaint.id)
+# Example: When complaint is saved in view, offload AI to Celery:
+# process_complaint_ai.delay(complaint.id)
 # Return HTTP 201 Created to mobile app instantly (< 35 ms)!
 
 

@@ -16,7 +16,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Context Providers
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { FirebaseProvider } from './context/FirebaseProvider';
 
 // Layouts
@@ -36,6 +36,55 @@ import CitizenSubmit from './pages/citizen/Submit';
 import WorkerManagement from './pages/admin/WorkerManagement';
 import CrossDeptDashboard from './pages/admin/CrossDeptDashboard';
 import OfficerDashboard from './pages/officer/Dashboard';
+
+// Helper component for Root Route
+const RootRedirect = () => {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  const cleanRole = (role || 'citizen').toLowerCase();
+  switch (cleanRole) {
+    case 'admin':
+      return <Navigate to="/admin" replace />;
+    case 'officer':
+    case 'dept_officer':
+      return <Navigate to="/officer" replace />;
+    case 'worker':
+      return <Navigate to="/worker" replace />;
+    case 'citizen':
+    default:
+      return <Navigate to="/citizen" replace />;
+  }
+};
+
+// Protected route wrapper
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (allowedRoles) {
+    const cleanRole = (role || 'citizen').toLowerCase();
+    const mapped = cleanRole === 'dept_officer' ? 'officer' : cleanRole;
+    if (!allowedRoles.includes(mapped) && !allowedRoles.includes(cleanRole)) {
+      const target = cleanRole === 'admin' ? '/admin' : (cleanRole === 'officer' || cleanRole === 'dept_officer') ? '/officer' : cleanRole === 'worker' ? '/worker' : '/citizen';
+      return <Navigate to={target} replace />;
+    }
+  }
+  return children;
+};
+
+// Public auth route wrapper (redirect if already logged in)
+const PublicAuthRoute = ({ children }) => {
+  const { isAuthenticated, role } = useAuth();
+  if (isAuthenticated) {
+    const cleanRole = (role || 'citizen').toLowerCase();
+    const target = cleanRole === 'admin' ? '/admin' : (cleanRole === 'officer' || cleanRole === 'dept_officer') ? '/officer' : cleanRole === 'worker' ? '/worker' : '/citizen';
+    return <Navigate to={target} replace />;
+  }
+  return children;
+};
 
 // Lightweight placeholders for remaining portals (built in upcoming days)
 const PlaceholderCard = ({ title, desc, role }) => (
@@ -60,59 +109,71 @@ export default function App() {
         <FirebaseProvider>
           <Routes>
             {/* ================= PUBLIC AUTH ROUTES ================= */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<LoginPage />} />
+            <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
+            <Route path="/register" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
 
-            {/* Default Root Redirect */}
-            <Route path="/" element={<Navigate to="/citizen" replace />} />
+            {/* Default Root Redirect based on authentication status */}
+            <Route path="/" element={<RootRedirect />} />
 
             {/* ================= 1. CITIZEN PORTAL ================= */}
             <Route
               path="/citizen"
               element={
-                <CitizenLayout>
-                  <CitizenHome />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <CitizenHome />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/citizen/complaints"
               element={
-                <CitizenLayout>
-                  <MyComplaints />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <MyComplaints />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/citizen/complaint/:id"
               element={
-                <CitizenLayout>
-                  <ComplaintDetail />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <ComplaintDetail />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/citizen/submit"
               element={
-                <CitizenLayout>
-                  <CitizenSubmit />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <CitizenSubmit />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/citizen/profile"
               element={
-                <CitizenLayout>
-                  <CitizenProfile />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <CitizenProfile />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/citizen/help"
               element={
-                <CitizenLayout>
-                  <CitizenHelp />
-                </CitizenLayout>
+                <ProtectedRoute allowedRoles={['citizen', 'admin']}>
+                  <CitizenLayout>
+                    <CitizenHelp />
+                  </CitizenLayout>
+                </ProtectedRoute>
               }
             />
 
@@ -120,37 +181,43 @@ export default function App() {
             <Route
               path="/worker"
               element={
-                <WorkerLayout>
-                  <PlaceholderCard
-                    title="Assigned Tasks"
-                    desc="List of pending civic repairs with GPS map navigation."
-                    role="Worker"
-                  />
-                </WorkerLayout>
+                <ProtectedRoute allowedRoles={['worker', 'admin']}>
+                  <WorkerLayout>
+                    <PlaceholderCard
+                      title="Assigned Tasks"
+                      desc="List of pending civic repairs with GPS map navigation."
+                      role="Worker"
+                    />
+                  </WorkerLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/worker/completed"
               element={
-                <WorkerLayout>
-                  <PlaceholderCard
-                    title="Completed Work"
-                    desc="Resolved civic tasks with proof-of-work photos."
-                    role="Worker"
-                  />
-                </WorkerLayout>
+                <ProtectedRoute allowedRoles={['worker', 'admin']}>
+                  <WorkerLayout>
+                    <PlaceholderCard
+                      title="Completed Work"
+                      desc="Resolved civic tasks with proof-of-work photos."
+                      role="Worker"
+                    />
+                  </WorkerLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/worker/profile"
               element={
-                <WorkerLayout>
-                  <PlaceholderCard
-                    title="Worker Profile"
-                    desc="Department and Ward assignment details."
-                    role="Worker"
-                  />
-                </WorkerLayout>
+                <ProtectedRoute allowedRoles={['worker', 'admin']}>
+                  <WorkerLayout>
+                    <PlaceholderCard
+                      title="Worker Profile"
+                      desc="Department and Ward assignment details."
+                      role="Worker"
+                    />
+                  </WorkerLayout>
+                </ProtectedRoute>
               }
             />
 
@@ -158,41 +225,49 @@ export default function App() {
             <Route
               path="/officer"
               element={
-                <OfficerLayout>
-                  <OfficerDashboard />
-                </OfficerLayout>
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <OfficerDashboard />
+                  </OfficerLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/officer/validation"
               element={
-                <OfficerLayout>
-                  <PlaceholderCard
-                    title="Pending Human Validation"
-                    desc="Review edge-case complaints flagged by AI."
-                    role="Officer"
-                  />
-                </OfficerLayout>
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <PlaceholderCard
+                      title="Pending Human Validation"
+                      desc="Review edge-case complaints flagged by AI."
+                      role="Officer"
+                    />
+                  </OfficerLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/officer/workers"
               element={
-                <OfficerLayout>
-                  <WorkerManagement />
-                </OfficerLayout>
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <WorkerManagement />
+                  </OfficerLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/officer/settings"
               element={
-                <OfficerLayout>
-                  <PlaceholderCard
-                    title="Department Settings"
-                    desc="SLA thresholds and notification rules."
-                    role="Officer"
-                  />
-                </OfficerLayout>
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <PlaceholderCard
+                      title="Department Settings"
+                      desc="SLA thresholds and notification rules."
+                      role="Officer"
+                    />
+                  </OfficerLayout>
+                </ProtectedRoute>
               }
             />
 
@@ -200,58 +275,68 @@ export default function App() {
             <Route
               path="/admin"
               element={
-                <AdminLayout>
-                  <CrossDeptDashboard />
-                </AdminLayout>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <CrossDeptDashboard />
+                  </AdminLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/admin/workers"
               element={
-                <AdminLayout>
-                  <WorkerManagement />
-                </AdminLayout>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <WorkerManagement />
+                  </AdminLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/admin/complaints"
               element={
-                <AdminLayout>
-                  <PlaceholderCard
-                    title="City-Wide Complaints Ledger"
-                    desc="Browse and filter civic issues across all 4 departments and 4 wards."
-                    role="Admin"
-                  />
-                </AdminLayout>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <PlaceholderCard
+                      title="City-Wide Complaints Ledger"
+                      desc="Browse and filter civic issues across all 4 departments and 4 wards."
+                      role="Admin"
+                    />
+                  </AdminLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/admin/reports"
               element={
-                <AdminLayout>
-                  <PlaceholderCard
-                    title="Civic Analytics & Export"
-                    desc="Download monthly resolution performance reports."
-                    role="Admin"
-                  />
-                </AdminLayout>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <PlaceholderCard
+                      title="Civic Analytics & Export"
+                      desc="Download monthly resolution performance reports."
+                      role="Admin"
+                    />
+                  </AdminLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/admin/settings"
               element={
-                <AdminLayout>
-                  <PlaceholderCard
-                    title="System Settings"
-                    desc="Master categories, ward boundaries, and administrative access."
-                    role="Admin"
-                  />
-                </AdminLayout>
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLayout>
+                    <PlaceholderCard
+                      title="System Settings"
+                      desc="Master categories, ward boundaries, and administrative access."
+                      role="Admin"
+                    />
+                  </AdminLayout>
+                </ProtectedRoute>
               }
             />
 
             {/* Catch-all redirect */}
-            <Route path="*" element={<Navigate to="/citizen" replace />} />
+            <Route path="*" element={<RootRedirect />} />
           </Routes>
         </FirebaseProvider>
       </AuthProvider>

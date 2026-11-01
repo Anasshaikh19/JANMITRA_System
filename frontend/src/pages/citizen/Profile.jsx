@@ -116,12 +116,12 @@ export default function CitizenProfile() {
 
   // Profile Information State
   const [profile, setProfile] = useState({
-    name: user?.name || user?.full_name || 'Faizan Rayeen',
-    mobile: user?.mobile || user?.phone || '8767973210',
-    ward: user?.ward ? (typeof user.ward === 'number' ? `Ward ${user.ward}` : user.ward) : 'Ward 4 (Mangalwari / North Nagpur)',
+    name: user?.name || user?.full_name || 'Citizen User',
+    mobile: user?.mobile || user?.phone || '9820000001',
+    ward: user?.ward ? (typeof user.ward === 'number' ? `Ward ${user.ward}` : user.ward) : 'Ward 1 (Nagpur)',
     accountStatus: 'Active Citizen',
     memberSince: 'March 2026',
-    email: user?.email || 'faizan.rayeen@example.com'
+    email: user?.email || 'citizen@janmitra.nagpur.gov.in'
   });
 
   // Citizen Civic Stats State (Total filed, Resolved, In-Progress)
@@ -232,7 +232,7 @@ export default function CitizenProfile() {
             setReviews(d.reviews);
           }
         } else if (user && isMounted) {
-          const userName = user.name || user.full_name || 'Faizan Rayeen';
+          const userName = user.name || user.full_name || 'Citizen User';
           setProfile(prev => ({
             ...prev,
             name: userName,

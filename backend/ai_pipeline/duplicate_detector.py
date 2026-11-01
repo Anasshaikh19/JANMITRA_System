@@ -17,7 +17,7 @@ from typing import Dict, Any, Optional
 # Attempt to import GeoDjango spatial measurement; fallback to mock for non-GIS environments
 try:
     from django.contrib.gis.measure import D
-except ImportError:
+except Exception:
     D = lambda m: m
 
 

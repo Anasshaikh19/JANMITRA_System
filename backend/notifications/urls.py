@@ -15,6 +15,8 @@ from .views import (
 from .profile_view import UserProfileView
 from .auth_views import RegisterView, LoginView, CurrentUserView
 
+app_name = 'notifications'
+
 urlpatterns = [
     # GET /api/v1/notifications/
     path('', NotificationListView.as_view(), name='notification-list'),

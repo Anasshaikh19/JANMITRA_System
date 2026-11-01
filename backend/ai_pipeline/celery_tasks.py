@@ -50,12 +50,20 @@ except ImportError:
     class StatusHistory:
         pass
 
-from .ai_module.exif_checker import EXIFChecker
-from .ai_module.ela_checker import ELAChecker
-from .ai_module.fake_detector import FakeDetector
-from .ai_module.yolo_validator import YOLOValidator
-from .ai_module.duplicate_detector import DuplicateDetector
-from .ai_module.priority_engine import PriorityEngine
+try:
+    from .exif_checker import EXIFChecker
+    from .ela_checker import ELAChecker
+    from .fake_detector import FakeDetector
+    from .yolo_validator import YOLOValidator
+    from .duplicate_detector import DuplicateDetector
+    from .priority_engine import PriorityEngine
+except ImportError:
+    from .ai_module.exif_checker import EXIFChecker
+    from .ai_module.ela_checker import ELAChecker
+    from .ai_module.fake_detector import FakeDetector
+    from .ai_module.yolo_validator import YOLOValidator
+    from .ai_module.duplicate_detector import DuplicateDetector
+    from .ai_module.priority_engine import PriorityEngine
 
 CITIZEN_MSG_CORRUPTED_DEFAULT = (
     "The uploaded photograph appears corrupted, incomplete, or unreadable. "
