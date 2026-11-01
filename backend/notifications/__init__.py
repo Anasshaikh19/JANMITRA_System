@@ -1,0 +1,3 @@
+"""
+JANMITRA - Notifications Application Package
+"""
