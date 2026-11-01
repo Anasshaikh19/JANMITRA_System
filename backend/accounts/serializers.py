@@ -36,8 +36,21 @@ class CitizenRegisterSerializer(serializers.Serializer):
         help_text='Exactly 10-digit primary mobile number'
     )
     ward = serializers.IntegerField(
-        required=True,
-        help_text='Civic Ward number (must be 1, 2, 3, or 4)'
+        required=False,
+        default=None,
+        allow_null=True,
+        help_text='Civic Ward number (1, 2, 3, or 4)'
+    )
+    department = serializers.CharField(
+        required=False,
+        default='',
+        allow_blank=True,
+        help_text='Associated municipal department (for worker/officer)'
+    )
+    role = serializers.CharField(
+        required=False,
+        default='citizen',
+        help_text='User role: citizen, worker, dept_officer, admin'
     )
     email = serializers.EmailField(
         required=False,
@@ -68,34 +81,54 @@ class CitizenRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({'mobile': 'A user with this mobile number already exists.'})
         attrs['mobile'] = mobile_val
 
-        # 3. Validate ward: must be 1, 2, 3, or 4 and must already exist as a seeded ward
-        ward_val = attrs.get('ward')
-        if ward_val is None:
-            raise serializers.ValidationError({'ward': 'Ward is required.'})
-        try:
-            ward_num = int(ward_val)
-        except (ValueError, TypeError):
-            raise serializers.ValidationError({'ward': 'Ward must be 1, 2, 3, or 4.'})
-        if ward_num not in [1, 2, 3, 4]:
-            raise serializers.ValidationError({'ward': 'Ward must be 1, 2, 3, or 4.'})
+        # 3. Clean & normalize role
+        raw_role = str(attrs.get('role', 'citizen')).strip().lower()
+        if raw_role in ['dept_officer', 'officer', 'department_officer', 'department']:
+            clean_role = User.Role.DEPT_OFFICER
+        elif raw_role in ['worker', 'field_worker', 'field worker']:
+            clean_role = User.Role.WORKER
+        elif raw_role in ['admin', 'administrator', 'superadmin']:
+            clean_role = User.Role.ADMIN
+        else:
+            clean_role = User.Role.CITIZEN
+        attrs['role'] = clean_role
 
-        # Require existing seeded ward: do NOT silently create missing ward records
-        try:
-            ward_instance = Ward.objects.get(id=ward_num)
-        except Ward.DoesNotExist:
-            raise serializers.ValidationError({
-                'ward': f'Ward {ward_num} is not configured or seeded. Please select a valid seeded ward.'
-            })
+        # 4. Validate ward (required for citizen, optional for others)
+        ward_val = attrs.get('ward')
+        ward_instance = None
+        if ward_val is not None and str(ward_val).strip() != '':
+            try:
+                ward_num = int(ward_val)
+                ward_instance = Ward.objects.filter(id=ward_num).first()
+            except (ValueError, TypeError):
+                pass
+        
+        if clean_role == User.Role.CITIZEN and not ward_instance:
+            ward_instance = Ward.objects.filter(id=1).first() or Ward.objects.first()
 
         attrs['ward_instance'] = ward_instance
-        attrs['ward'] = ward_num
 
-        # 4. Validate password
+        # 5. Validate department (for worker & officer)
+        dept_val = str(attrs.get('department', '')).strip()
+        dept_instance = None
+        if dept_val:
+            if dept_val.isdigit():
+                dept_instance = Department.objects.filter(id=int(dept_val)).first()
+            else:
+                dept_instance = (
+                    Department.objects.filter(short_name__iexact=dept_val).first() or
+                    Department.objects.filter(name__icontains=dept_val).first()
+                )
+        if clean_role in [User.Role.WORKER, User.Role.DEPT_OFFICER] and not dept_instance:
+            dept_instance = Department.objects.first()
+        attrs['dept_instance'] = dept_instance
+
+        # 6. Validate password
         password_val = attrs.get('password')
         if not password_val or len(str(password_val)) < 6:
             raise serializers.ValidationError({'password': 'Password must be at least 6 characters long.'})
 
-        # 5. Clean email
+        # 7. Clean email
         if 'email' in attrs and attrs['email']:
             attrs['email'] = str(attrs['email']).strip().lower()
 
@@ -106,17 +139,26 @@ class CitizenRegisterSerializer(serializers.Serializer):
         full_name = validated_data.pop('full_name')
         mobile = validated_data.pop('mobile')
         password = validated_data.pop('password')
-        ward_instance = validated_data.pop('ward_instance')
+        role = validated_data.pop('role', User.Role.CITIZEN)
+        ward_instance = validated_data.pop('ward_instance', None)
+        dept_instance = validated_data.pop('dept_instance', None)
         validated_data.pop('ward', None)
+        validated_data.pop('department', None)
         email = validated_data.pop('email', '')
+
+        is_admin = (role == User.Role.ADMIN)
+        is_staff = (role in [User.Role.ADMIN, User.Role.DEPT_OFFICER])
 
         user = User.objects.create_user(
             mobile=mobile,
             full_name=full_name,
             password=password,
-            role=User.Role.CITIZEN,
+            role=role,
             ward=ward_instance,
+            department=dept_instance,
             email=email,
+            is_staff=is_staff,
+            is_superuser=is_admin,
             **validated_data
         )
         return user

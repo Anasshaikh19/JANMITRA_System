@@ -34,10 +34,14 @@ const normalizeRole = (value) => {
 const rawBaseUrl =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  'http://localhost:8000/api';
+  'http://localhost:8000';
+
+const cleanBaseUrl = rawBaseUrl.endsWith('/api')
+  ? rawBaseUrl.slice(0, -4)
+  : (rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl);
 
 const api = axios.create({
-  baseURL: rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl,
+  baseURL: cleanBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -59,6 +63,9 @@ const processQueue = (error, token = null) => {
 
 api.interceptors.request.use(
   (config) => {
+    if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('/auth') && !config.url.startsWith('http')) {
+      config.url = `/api${config.url.startsWith('/') ? '' : '/'}${config.url}`;
+    }
     const token = getStoredToken();
     if (token) {
       config.headers = {

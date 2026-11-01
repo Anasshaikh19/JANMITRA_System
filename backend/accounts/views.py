@@ -63,6 +63,9 @@ class CitizenRegisterView(generics.GenericAPIView):
         if user.ward:
             refresh['ward_number'] = user.ward.id
             refresh['ward_name'] = user.ward.name
+        if user.department:
+            refresh['department_id'] = user.department.id
+            refresh['department_name'] = user.department.name
 
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)

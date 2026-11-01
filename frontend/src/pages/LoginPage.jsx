@@ -1,16 +1,5 @@
-/**
- * ==============================================================================
- * JANMITRA - Civic Issue Reporting & Management System
- * File: src/pages/LoginPage.jsx
- * Developer: Faizan Rayeen (Citizen Portal Lead)
- * Description: Complete, professional Login and Registration page for all
- *              user roles (citizen, worker, dept_officer, admin).
- *              Mobile-first responsive card layout using Tailwind CSS.
- * ==============================================================================
- */
-
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const getApiBaseUrl = () => {
@@ -28,57 +17,71 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Canonical Nagpur Municipal Departments
+const DEPARTMENTS = [
+  { value: 'PWD', label: 'PWD (Roads & Infrastructure)', id: 1 },
+  { value: 'SWM', label: 'Solid Waste Management (SWM)', id: 2 },
+  { value: 'PHE', label: 'Public Health Engineering (Water Works)', id: 3 },
+  { value: 'ELEC', label: 'Electrical Department (Street Lighting)', id: 4 },
+];
+
+// 4 Canonical Wards in Nagpur
+const WARDS = [
+  { value: 1, label: 'Ward 1 (Dharampeth / West Nagpur)' },
+  { value: 2, label: 'Ward 2 (Dhantoli / Central Nagpur)' },
+  { value: 3, label: 'Ward 3 (Nehru Nagar / East Nagpur)' },
+  { value: 4, label: 'Ward 4 (Mangalwari / North Nagpur)' },
+];
+
 export const LoginPage = () => {
-  // Navigation hook with fallback
+  const { login } = useAuth();
   let navigate;
+  let location;
   try {
     navigate = useNavigate();
+    location = useLocation();
   } catch (e) {
     navigate = (path) => { window.location.href = path; };
+    location = { pathname: '/register' };
   }
 
-  // Auth context for persisting credentials & triggering FCM registration
-  const { login } = useAuth();
+  // Active Tab: starts on 'register' as requested by user
+  const [activeTab, setActiveTab] = useState(() => {
+    return (location?.pathname === '/login') ? 'login' : 'register';
+  });
 
-  // Active Tab state ('login' | 'register')
-  const [activeTab, setActiveTab] = useState('login');
+  useEffect(() => {
+    if (location?.pathname === '/login') {
+      setActiveTab('login');
+    } else if (location?.pathname === '/register') {
+      setActiveTab('register');
+    }
+  }, [location?.pathname]);
 
-  // Loading state during API requests
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Global API error message
-  const [apiError, setApiError] = useState('');
-
-  // Password visibility toggles
+  // Sign In form state
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginRole, setLoginRole] = useState('citizen');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  // Register form state
+  const [regName, setRegName] = useState('');
+  const [regMobile, setRegMobile] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regRole, setRegRole] = useState('citizen'); // 'citizen' | 'worker' | 'officer' | 'admin'
+  const [regWard, setRegWard] = useState(1);
+  const [regDepartment, setRegDepartment] = useState('PWD');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Login Form State
-  const [loginForm, setLoginForm] = useState({
-    mobile: '',
-    password: ''
-  });
-
-  // Register Form State
-  const [registerForm, setRegisterForm] = useState({
-    name: '',
-    mobile: '',
-    ward: '',
-    password: '',
-    confirmPassword: ''
-  });
-
-  // Validation Error States
-  const [loginErrors, setLoginErrors] = useState({});
-  const [registerErrors, setRegisterErrors] = useState({});
+  // Status & error states
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   /**
-   * Role-based routing redirection
-   * citizen      -> /citizen
-   * worker       -> /worker
-   * dept_officer -> /officer
-   * admin        -> /admin
+   * Route safely to destination portal
    */
   const handleRoleRedirect = (role) => {
     const cleanRole = (role || 'citizen').toLowerCase().trim();
@@ -101,650 +104,553 @@ export const LoginPage = () => {
   };
 
   /**
-   * Validate Login inputs
+   * Handle Registration Submission
+   * POST /api/v1/auth/register/
    */
-  const validateLoginForm = () => {
-    const errors = {};
-    const mobileDigits = loginForm.mobile.trim();
-
-    if (!mobileDigits) {
-      errors.mobile = 'Mobile number is required';
-    } else if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
-      errors.mobile = 'Enter a valid 10-digit mobile number';
-    }
-
-    if (!loginForm.password) {
-      errors.password = 'Password is required';
-    }
-
-    setLoginErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  /**
-   * Validate Register inputs
-   */
-  const validateRegisterForm = () => {
-    const errors = {};
-    const mobileDigits = registerForm.mobile.trim();
-
-    if (!registerForm.name.trim()) {
-      errors.name = 'Full name is required';
-    } else if (registerForm.name.trim().length < 3) {
-      errors.name = 'Full name must be at least 3 characters';
-    }
-
-    if (!mobileDigits) {
-      errors.mobile = 'Mobile number is required';
-    } else if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
-      errors.mobile = 'Enter a valid 10-digit mobile number';
-    }
-
-    if (!registerForm.ward) {
-      errors.ward = 'Please select your Nagpur ward';
-    }
-
-    if (!registerForm.password) {
-      errors.password = 'Password is required';
-    } else if (registerForm.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-    }
-
-    if (!registerForm.confirmPassword) {
-      errors.confirmPassword = 'Confirm your password';
-    } else if (registerForm.password !== registerForm.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-
-    setRegisterErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  /**
-   * Handle Login Form Submission
-   * POST /api/v1/auth/login/
-   */
-  const handleLoginSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setApiError('');
+    setErrorMsg('');
+    setSuccessMsg('');
 
-    if (!validateLoginForm()) return;
+    // Validations
+    if (!regName.trim()) {
+      setErrorMsg('Please enter your full name.');
+      return;
+    }
+    const cleanMobile = regMobile.trim().replace(/\D/g, '');
+    if (cleanMobile.length !== 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (regPassword.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
 
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+      const payload = {
+        name: regName.trim(),
+        full_name: regName.trim(),
+        mobile: cleanMobile,
+        email: regEmail.trim() || `${cleanMobile}@${regRole}.janmitra.gov.in`,
+        password: regPassword,
+        role: regRole,
+        ward: (regRole === 'citizen' || regRole === 'worker') ? regWard : undefined,
+        department: (regRole === 'worker' || regRole === 'officer') ? regDepartment : undefined,
+      };
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          mobile: loginForm.mobile.trim(),
-          password: loginForm.password
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const errMsg = data.error || data.detail || (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : null) || 'Invalid mobile number or password.';
-        setApiError(errMsg);
+        const errorText =
+          data.detail ||
+          data.error ||
+          data.message ||
+          (typeof data === 'object' ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : v}`).join(' | ') : null) ||
+          'Registration failed. Please check your inputs.';
+        setErrorMsg(errorText);
         return;
       }
 
-      // Store in AuthContext (saves tokens and triggers FCM permission)
-      await login(data);
+      setSuccessMsg('Account registered successfully! Directing to portal...');
 
-      // Determine user role and redirect
-      const userRole = data.role || data.user?.role || 'citizen';
-      handleRoleRedirect(userRole);
+      // Store in AuthContext
+      login(data);
+
+      const targetRole = data.role || data.user?.role || regRole;
+      setTimeout(() => {
+        handleRoleRedirect(targetRole);
+      }, 700);
     } catch (err) {
-      console.error('[Login Error]', err);
-      setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
+      console.error('[Register Error]', err);
+      setErrorMsg(`Unable to connect to backend server at ${API_BASE_URL}. Ensure Django backend is running.`);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   /**
-   * Handle Register Form Submission
-   * POST /api/v1/auth/register/ -> then auto-login
+   * Handle Login Submission
+   * POST /api/v1/auth/login/
    */
-  const handleRegisterSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setApiError('');
+    setErrorMsg('');
+    setSuccessMsg('');
 
-    if (!validateRegisterForm()) return;
+    if (!loginIdentifier.trim()) {
+      setErrorMsg('Please enter your registered mobile number or email.');
+      return;
+    }
+    if (!loginPassword) {
+      setErrorMsg('Please enter your password.');
+      return;
+    }
 
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      // 1. Send registration payload
-      const regResponse = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: registerForm.name.trim(),
-          mobile: registerForm.mobile.trim(),
-          ward: registerForm.ward,
-          password: registerForm.password
-        })
+          mobile: loginIdentifier.trim(),
+          username: loginIdentifier.trim(),
+          password: loginPassword,
+          role: loginRole,
+        }),
       });
 
-      const regData = await regResponse.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
-      if (!regResponse.ok) {
-        const errMsg = regData.error || regData.detail || (typeof regData.errors === 'object' ? Object.values(regData.errors).flat().join(' ') : null) || 'Registration failed. Please check your inputs.';
-        setApiError(errMsg);
+      if (!response.ok) {
+        const errorText =
+          data.error ||
+          data.detail ||
+          data.non_field_errors ||
+          (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : null) ||
+          'Invalid mobile number or password.';
+        setErrorMsg(Array.isArray(errorText) ? errorText.join(' ') : errorText);
         return;
       }
 
-      // 2. Auto-login immediately after successful registration
-      const loginResponse = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          mobile: registerForm.mobile.trim(),
-          password: registerForm.password
-        })
-      });
+      setSuccessMsg('Login successful! Redirecting...');
+      login(data);
 
-      const loginData = await loginResponse.json().catch(() => ({}));
-
-      if (loginResponse.ok) {
-        await login(loginData);
-        handleRoleRedirect(loginData.role || loginData.user?.role || 'citizen');
-      } else {
-        await login(regData);
-        handleRoleRedirect('citizen');
-      }
+      const targetRole = data.role || data.user?.role || loginRole;
+      setTimeout(() => {
+        handleRoleRedirect(targetRole);
+      }, 500);
     } catch (err) {
-      console.error('[Register Error]', err);
-      setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
+      console.error('[Login Error]', err);
+      setErrorMsg(`Unable to connect to backend server at ${API_BASE_URL}.`);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
-      {/* Centered Mobile-First Container */}
-      <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+      <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200 bg-white">
         
         {/* ================= HEADER CARD ================= */}
-        <div className="bg-[#0d2a53] text-white px-6 py-8 text-center relative">
-          {/* Subtle Background Glow Accent */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
-
-          {/* Logo / Emblems */}
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner">
-            <span className="text-3xl" role="img" aria-label="Municipal Corporation Logo">🏛️</span>
+        <div className="bg-[#0d2a53] text-white px-6 py-7 text-center relative">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-500/20 text-2xl mb-2 font-black shadow-inner border border-blue-400/30">
+            🏛️
           </div>
-
-          {/* Title */}
-          <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-white uppercase">
+          <h1 className="text-2xl font-black text-white tracking-tight uppercase">
             JANMITRA
           </h1>
-
-          {/* Authority Pill Badge */}
-          <div className="mt-1">
-            <span className="inline-block bg-blue-600/40 text-blue-200 border border-blue-400/30 text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Municipal Corporation
-            </span>
-          </div>
-
-          {/* Tagline */}
-          <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-xs mx-auto leading-relaxed">
-            Civic Issue Reporting & Management System
+          <p className="text-xs text-blue-200 mt-1 font-medium">
+            Nagpur Municipal Corporation &bull; Civic Redressal Portal
           </p>
         </div>
 
-        {/* ================= FORM CARD ================= */}
-        <div className="bg-white p-6 sm:p-8">
-          
-          {/* TABS HEADER */}
-          <div className="flex border-b border-slate-200 mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('login');
-                setApiError('');
-              }}
-              className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
-                activeTab === 'login'
-                  ? 'text-[#0d2a53]'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Sign In
-              {activeTab === 'login' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
-              )}
-            </button>
+        {/* ================= TAB SWITCHER ================= */}
+        <div role="tablist" aria-label="Authentication Options" className="flex border-b border-slate-200 bg-slate-50">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'register'}
+            id="tab-register"
+            onClick={() => {
+              setActiveTab('register');
+              setErrorMsg('');
+              setSuccessMsg('');
+            }}
+            className={`flex-1 py-3 text-center text-xs font-bold border-b-2 transition ${
+              activeTab === 'register'
+                ? 'border-[#0d2a53] text-[#0d2a53] bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            📝 Register Account
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'login'}
+            id="tab-login"
+            onClick={() => {
+              setActiveTab('login');
+              setErrorMsg('');
+              setSuccessMsg('');
+            }}
+            className={`flex-1 py-3 text-center text-xs font-bold border-b-2 transition ${
+              activeTab === 'login'
+                ? 'border-[#0d2a53] text-[#0d2a53] bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            🔐 Sign In
+          </button>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('register');
-                setApiError('');
-              }}
-              className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
-                activeTab === 'register'
-                  ? 'text-[#0d2a53]'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
+        <div className="p-6 sm:p-7">
+          {/* Error Message Alert */}
+          {errorMsg && (
+            <div
+              role="alert"
+              className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-rose-700 flex items-start gap-2 shadow-xs"
             >
-              Register (Citizen)
-              {activeTab === 'register' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
-              )}
-            </button>
-          </div>
-
-          {/* ================= API ERROR BANNER ================= */}
-          {apiError && (
-            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 text-xs sm:text-sm animate-shake">
-              <span className="text-base leading-none">⚠️</span>
-              <div className="flex-1 font-medium leading-snug">{apiError}</div>
-              <button
-                type="button"
-                onClick={() => setApiError('')}
-                className="text-red-400 hover:text-red-700 font-bold ml-1"
-              >
-                &times;
-              </button>
+              <span className="text-sm">⚠️</span>
+              <span className="leading-relaxed">{errorMsg}</span>
             </div>
           )}
 
-          {/* ================= 1. LOGIN FORM ================= */}
-          {activeTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+          {/* Success Message Alert */}
+          {successMsg && (
+            <div
+              role="status"
+              className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-700 flex items-center gap-2 shadow-xs"
+            >
+              <span className="text-sm">✅</span>
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* ================= REGISTER FORM ================= */}
+          {activeTab === 'register' && (
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              
+              {/* User Type / Role Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  User Type / Role <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={regRole}
+                  onChange={(e) => setRegRole(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                >
+                  <option value="citizen">👤 Citizen (Civic Grievance Reporter)</option>
+                  <option value="worker">👷 Field Worker (Sanitation, Roads, Repairs)</option>
+                  <option value="officer">🏢 Department Officer (PWD, SWM, Water, Elec)</option>
+                  <option value="admin">🏛️ Municipal Admin (NMC Central HQ)</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Select your user category to enable department and ward assignments.
+                </p>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Ramesh Deshmukh"
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
+              </div>
+
               {/* Mobile Number */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  10-Digit Mobile Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
+                  <span className="absolute left-3.5 top-2.5 text-xs text-slate-400 font-semibold select-none">
                     +91
-                  </div>
+                  </span>
                   <input
                     type="tel"
-                    inputMode="numeric"
+                    required
                     maxLength={10}
-                    placeholder="9876543210"
-                    value={loginForm.mobile}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setLoginForm((prev) => ({ ...prev, mobile: val }));
-                      if (loginErrors.mobile) setLoginErrors((prev) => ({ ...prev, mobile: null }));
-                    }}
-                    className={`w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      loginErrors.mobile
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
+                    value={regMobile}
+                    onChange={(e) => setRegMobile(e.target.value.replace(/\D/g, ''))}
+                    placeholder="98XXXXXXXX"
+                    className="w-full pl-11 pr-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 tracking-wider focus:outline-none focus:ring-2 focus:ring-blue-600 transition font-mono"
                   />
                 </div>
-                {loginErrors.mobile && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {loginErrors.mobile}
-                  </p>
+              </div>
+
+              {/* Department Dropdown (Shown for Worker & Officer) */}
+              {(regRole === 'worker' || regRole === 'officer') && (
+                <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                  <label className="block text-xs font-bold text-blue-900 mb-1">
+                    Department <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={regDepartment}
+                    onChange={(e) => setRegDepartment(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs font-semibold border border-blue-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept.value} value={dept.value}>
+                        {dept.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Ward Dropdown (Shown for Citizen & Worker) */}
+              {(regRole === 'citizen' || regRole === 'worker') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Municipal Ward <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={regWard}
+                    onChange={(e) => setRegWard(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  >
+                    {WARDS.map((w) => (
+                      <option key={w.value} value={w.value}>
+                        {w.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Optional Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Email Address <span className="text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
+              </div>
+
+              {/* Password & Confirm */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Confirm Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Show password toggle */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="show-reg-pass"
+                  checked={showRegPassword}
+                  onChange={(e) => setShowRegPassword(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="show-reg-pass" className="text-xs text-slate-600 font-semibold cursor-pointer select-none">
+                  Show passwords
+                </label>
+              </div>
+
+              {/* Submit Registration Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Registering Account in Database...</span>
+                  </>
+                ) : (
+                  <span>Complete Registration & Open Portal →</span>
                 )}
+              </button>
+            </form>
+          )}
+
+          {/* ================= SIGN IN (LOGIN) FORM ================= */}
+          {activeTab === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              
+              {/* Portal Role / User Type Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Target Portal / User Type
+                </label>
+                <select
+                  value={loginRole}
+                  onChange={(e) => setLoginRole(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold border border-slate-300 rounded-xl bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                >
+                  <option value="citizen">👤 Citizen Portal</option>
+                  <option value="worker">👷 Field Worker Portal</option>
+                  <option value="officer">🏢 Department Officer Portal</option>
+                  <option value="admin">🏛️ Administrator Portal</option>
+                </select>
+              </div>
+
+              {/* Mobile / Username */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mobile Number / Email Address
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  placeholder="e.g. 9820000001 or admin@janmitra.gov.in"
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
               </div>
 
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Password <span className="text-red-500">*</span>
+                  <label className="block text-xs font-bold text-slate-700">
+                    Password
                   </label>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showLoginPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
-                    value={loginForm.password}
-                    onChange={(e) => {
-                      setLoginForm((prev) => ({ ...prev, password: e.target.value }));
-                      if (loginErrors.password) setLoginErrors((prev) => ({ ...prev, password: null }));
-                    }}
-                    className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      loginErrors.password
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
                   <button
                     type="button"
-                    onClick={() => setShowLoginPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label="Toggle password visibility"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold"
                   >
-                    {showLoginPassword ? (
-                      /* Eye Off Icon */
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      /* Eye On Icon */
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
+                    {showLoginPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
-                {loginErrors.password && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {loginErrors.password}
-                  </p>
-                )}
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 text-xs border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                />
               </div>
 
-              {/* Login Submit Button */}
+              {/* Submit Sign In Button */}
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full mt-2 py-3 px-4 rounded-xl text-white font-bold text-sm bg-[#0d2a53] hover:bg-[#133b73] active:bg-[#091e3b] transition duration-200 shadow-md shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-[#0d2a53] hover:bg-[#12386e] active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 cursor-pointer"
               >
-                {isLoading ? (
+                {loading ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     <span>Signing in...</span>
                   </>
                 ) : (
-                  <span>Sign In</span>
+                  <span>Sign In to Portal →</span>
                 )}
               </button>
-
-              {/* Role Hints Footer */}
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Authorized for Citizens, Workers, Officers & Admins
-              </div>
             </form>
           )}
 
-          {/* ================= 2. REGISTER FORM ================= */}
-          {activeTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
-              {/* Full Name */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Faizan Rayeen"
-                  value={registerForm.name}
-                  onChange={(e) => {
-                    setRegisterForm((prev) => ({ ...prev, name: e.target.value }));
-                    if (registerErrors.name) setRegisterErrors((prev) => ({ ...prev, name: null }));
-                  }}
-                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                    registerErrors.name
-                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                  }`}
-                />
-                {registerErrors.name && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {registerErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Mobile Number */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
-                    +91
-                  </div>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="9876543210"
-                    value={registerForm.mobile}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setRegisterForm((prev) => ({ ...prev, mobile: val }));
-                      if (registerErrors.mobile) setRegisterErrors((prev) => ({ ...prev, mobile: null }));
-                    }}
-                    className={`w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.mobile
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                </div>
-                {registerErrors.mobile && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {registerErrors.mobile}
-                  </p>
-                )}
-              </div>
-
-              {/* Ward Selection Dropdown */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Municipal Ward <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={registerForm.ward}
-                  onChange={(e) => {
-                    setRegisterForm((prev) => ({ ...prev, ward: e.target.value }));
-                    if (registerErrors.ward) setRegisterErrors((prev) => ({ ...prev, ward: null }));
-                  }}
-                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 outline-none transition duration-150 ${
-                    registerErrors.ward
-                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                  }`}
-                >
-                  <option value="">Select your ward</option>
-                  <option value="Ward 1">Ward 1 (Dharampeth / West Nagpur)</option>
-                  <option value="Ward 2">Ward 2 (Dhantoli / Central Nagpur)</option>
-                  <option value="Ward 3">Ward 3 (Nehru Nagar / East Nagpur)</option>
-                  <option value="Ward 4">Ward 4 (Mangalwari / North Nagpur)</option>
-                </select>
-                {registerErrors.ward && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {registerErrors.ward}
-                  </p>
-                )}
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showRegPassword ? 'text' : 'password'}
-                    placeholder="Minimum 8 characters"
-                    value={registerForm.password}
-                    onChange={(e) => {
-                      setRegisterForm((prev) => ({ ...prev, password: e.target.value }));
-                      if (registerErrors.password) setRegisterErrors((prev) => ({ ...prev, password: null }));
-                    }}
-                    className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.password
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowRegPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showRegPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                {registerErrors.password && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {registerErrors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
-                    value={registerForm.confirmPassword}
-                    onChange={(e) => {
-                      setRegisterForm((prev) => ({ ...prev, confirmPassword: e.target.value }));
-                      if (registerErrors.confirmPassword) {
-                        setRegisterErrors((prev) => ({ ...prev, confirmPassword: null }));
-                      }
-                    }}
-                    className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.confirmPassword
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showConfirmPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                {registerErrors.confirmPassword && (
-                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {registerErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              {/* Register Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-2 py-3 px-4 rounded-xl text-white font-bold text-sm bg-[#0d2a53] hover:bg-[#133b73] active:bg-[#091e3b] transition duration-200 shadow-md shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    <span>Creating Account...</span>
-                  </>
-                ) : (
-                  <span>Register & Continue</span>
-                )}
-              </button>
-
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Official registration for citizens of Nagpur Municipal Corporation
-              </div>
-            </form>
-          )}
-
-          {/* Quick Dev Switcher */}
-          <div className="mt-5 pt-4 border-t border-slate-100">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              ⚡ Quick Test Login (Seeded Demo Accounts)
+          {/* ================= QUICK SEEDED DEMO LOGINS ================= */}
+          <div className="mt-6 pt-5 border-t border-slate-200">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">
+              ⚡ Quick Test Login (Seeded Accounts)
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9820000001', password: 'Demo@12345' });
+                  setLoginIdentifier('9820000001');
+                  setLoginPassword('Demo@12345');
+                  setLoginRole('citizen');
                   login({
                     token: 'jwt-citizen-demo',
                     role: 'citizen',
-                    user: { id: 'u-citizen-1', name: 'Citizen Demo', mobile: '9820000001', role: 'citizen', ward: 1 }
+                    user: { id: 22, name: 'Aarav Mehta (Citizen)', mobile: '9820000001', role: 'citizen', ward: 1 }
                   });
                   navigate('/citizen');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200/60 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-2 text-xs font-bold rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200 flex items-center justify-center gap-1.5"
               >
                 <span>👤</span> Citizen (Ward 1)
               </button>
+
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9800000001', password: 'Demo@12345' });
+                  setLoginIdentifier('9800000001');
+                  setLoginPassword('Demo@12345');
+                  setLoginRole('officer');
                   login({
                     token: 'jwt-officer-demo',
                     role: 'officer',
-                    user: { id: 'u-officer-1', name: 'Rajesh Kumar (PWD)', mobile: '9800000001', role: 'officer', department: 'PWD' }
+                    user: { id: 2, name: 'Rajesh Kumar (PWD Officer)', mobile: '9800000001', role: 'officer', department: 'PWD' }
                   });
                   navigate('/officer');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200/60 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-2 text-xs font-bold rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200 flex items-center justify-center gap-1.5"
               >
                 <span>🏢</span> Officer (PWD)
               </button>
+
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9810010001', password: 'Demo@12345' });
+                  setLoginIdentifier('9810010001');
+                  setLoginPassword('Demo@12345');
+                  setLoginRole('worker');
                   login({
                     token: 'jwt-worker-demo',
                     role: 'worker',
-                    user: { id: 'u-worker-1', name: 'Field Worker PWD', mobile: '9810010001', role: 'worker', department: 'PWD', ward: 1 }
+                    user: { id: 6, name: 'Worker PWD Ward 1', mobile: '9810010001', role: 'worker', department: 'PWD', ward: 1 }
                   });
                   navigate('/worker');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition border border-amber-200/60 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-2 text-xs font-bold rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 transition border border-amber-200 flex items-center justify-center gap-1.5"
               >
                 <span>👷</span> Field Worker
               </button>
+
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: 'admin@janmitra.gov.in', password: 'Demo@12345' });
+                  setLoginIdentifier('admin@janmitra.gov.in');
+                  setLoginPassword('Demo@12345');
+                  setLoginRole('admin');
                   login({
                     token: 'jwt-admin-demo',
                     role: 'admin',
-                    user: { id: 'u-admin-1', name: 'Central Admin', mobile: '9800000000', email: 'admin@janmitra.gov.in', role: 'admin' }
+                    user: { id: 1, name: 'Janmitra Admin', email: 'admin@janmitra.gov.in', role: 'admin' }
                   });
                   navigate('/admin');
                 }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200/60 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-2 text-xs font-bold rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200 flex items-center justify-center gap-1.5"
               >
                 <span>🏛️</span> Admin (HQ)
               </button>
@@ -754,8 +660,7 @@ export const LoginPage = () => {
         </div>
       </div>
 
-      {/* Bottom Footer Note */}
-      <footer className="mt-8 text-center text-xs text-slate-500">
+      <footer className="mt-6 text-center text-xs text-slate-500">
         JANMITRA &bull; Developed by Team ResolveIT &bull; Nagpur Municipal Corporation
       </footer>
     </div>

@@ -41,7 +41,7 @@ import OfficerDashboard from './pages/officer/Dashboard';
 const RootRedirect = () => {
   const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/register" replace />;
   }
   const cleanRole = (role || 'citizen').toLowerCase();
   switch (cleanRole) {
@@ -62,7 +62,7 @@ const RootRedirect = () => {
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/register" replace />;
   }
   if (allowedRoles) {
     const cleanRole = (role || 'citizen').toLowerCase();
