@@ -1,0 +1,1 @@
+"""JANMITRA Notifications Management Package"""
