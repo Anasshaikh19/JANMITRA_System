@@ -42,7 +42,7 @@ if use_sqlite:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
+            'NAME': ':memory:' if 'test' in sys.argv else (BASE_DIR / 'db.sqlite3'),
         }
     }
     import django.db.backends.sqlite3.base as sqlite_base
