@@ -1,0 +1,162 @@
+{
+  "type": "FeatureCollection",
+  "name": "Nagpur_Municipal_Corporation_Wards",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "WARD-NGP-CENTRAL",
+      "properties": {
+        "ward_id": "WARD-01",
+        "ward_name": "Nagpur Central",
+        "zone": "Central Zone",
+        "headquarters": "Gandhibagh Municipal Complex, Central Avenue, Nagpur",
+        "contact_officer": "Zonal Assistant Commissioner (Central)",
+        "phone": "+91-712-2567001",
+        "area_sq_km": 14.85,
+        "population_est": 385000,
+        "color_hex": "#2563EB",
+        "key_localities": [
+          "Sitabuldi",
+          "Mahal",
+          "Gandhibagh",
+          "Itwari",
+          "Cotton Market",
+          "Mayo Hospital Road",
+          "Central Avenue"
+        ],
+        "primary_depot": "Gandhibagh Civic Engineering Yard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.0700, 21.1200],
+            [79.1150, 21.1200],
+            [79.1150, 21.1650],
+            [79.0700, 21.1650],
+            [79.0700, 21.1200]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WARD-NGP-NORTH",
+      "properties": {
+        "ward_id": "WARD-02",
+        "ward_name": "Nagpur North",
+        "zone": "North Zone",
+        "headquarters": "Ashi Nagar Zonal Office, Kamptee Road, Nagpur",
+        "contact_officer": "Zonal Assistant Commissioner (North)",
+        "phone": "+91-712-2567002",
+        "area_sq_km": 28.40,
+        "population_est": 450000,
+        "color_hex": "#10B981",
+        "key_localities": [
+          "Jaripatka",
+          "Mankapur",
+          "Sadar North",
+          "Koradi Road",
+          "Ashi Nagar",
+          "Kamptee Road Corridor"
+        ],
+        "primary_depot": "Mankapur PWD Works Division"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.0300, 21.1650],
+            [79.0700, 21.1650],
+            [79.1150, 21.1650],
+            [79.1800, 21.1650],
+            [79.1800, 21.2200],
+            [79.1100, 21.2200],
+            [79.0300, 21.2200],
+            [79.0300, 21.1650]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WARD-NGP-EAST",
+      "properties": {
+        "ward_id": "WARD-03",
+        "ward_name": "Nagpur East",
+        "zone": "East Zone",
+        "headquarters": "Lakadganj Municipal Office, Bhandara Road, Nagpur",
+        "contact_officer": "Zonal Assistant Commissioner (East)",
+        "phone": "+91-712-2567003",
+        "area_sq_km": 24.60,
+        "population_est": 420000,
+        "color_hex": "#F59E0B",
+        "key_localities": [
+          "Lakadganj",
+          "Nandanvan",
+          "Pardi",
+          "Wardhaman Nagar",
+          "Satranjipura",
+          "Bhandara Road Corridor"
+        ],
+        "primary_depot": "Lakadganj SWM Heavy Fleet Yard"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.1150, 21.1150],
+            [79.1800, 21.1150],
+            [79.1800, 21.1650],
+            [79.1150, 21.1650],
+            [79.1150, 21.1150]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "WARD-NGP-WEST",
+      "properties": {
+        "ward_id": "WARD-04",
+        "ward_name": "Nagpur West",
+        "zone": "West Zone",
+        "headquarters": "Dharampeth Zonal Office, West High Court Road, Nagpur",
+        "contact_officer": "Zonal Assistant Commissioner (West)",
+        "phone": "+91-712-2567004",
+        "area_sq_km": 22.10,
+        "population_est": 360000,
+        "color_hex": "#8B5CF6",
+        "key_localities": [
+          "Dharampeth",
+          "Ram Nagar",
+          "Gokulpeth",
+          "Civil Lines",
+          "Seminary Hills",
+          "Ambazari Lake",
+          "Shankar Nagar"
+        ],
+        "primary_depot": "Dharampeth Civic Maintenance Depot"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.0200, 21.1150],
+            [79.0700, 21.1150],
+            [79.0700, 21.1650],
+            [79.0300, 21.1650],
+            [79.0200, 21.1400],
+            [79.0200, 21.1150]
+          ]
+        ]
+      }
+    }
+  ]
+}
