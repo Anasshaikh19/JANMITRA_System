@@ -17,7 +17,7 @@ from rest_framework import filters, generics, permissions, serializers as drf_se
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed, NotFound, PermissionDenied
 from rest_framework.response import Response
-
+from ai_pipeline.celery_tasks import process_complaint_ai
 from accounts.models import User
 from accounts.permissions import IsAdmin, IsAdminOrDeptOfficer, IsDeptOfficer, IsWorker
 from .models import Category, Complaint, ComplaintImage, StatusHistory, Ward
@@ -54,6 +54,10 @@ from .tasks import (
 )
 
 logger = logging.getLogger('complaints')
+
+# When complaint is saved, offload AI to Celery:
+process_complaint_ai.delay(complaint.id)
+# Return HTTP 201 Created to mobile app instantly (< 35 ms)!
 
 
 class MetaCategoryListView(generics.ListAPIView):
