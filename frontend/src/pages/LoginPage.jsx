@@ -254,7 +254,7 @@ export const LoginPage = () => {
             JANMITRA
           </h1>
           <p className="text-xs text-blue-200 mt-1 font-medium">
-            Nagpur Municipal Corporation &bull; Civic Redressal Portal
+            Municipal Corporation &bull; Civic Redressal Portal
           </p>
         </div>
 
@@ -585,10 +585,25 @@ export const LoginPage = () => {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setLoginIdentifier('9820000001');
                   setLoginPassword('Demo@12345');
                   setLoginRole('citizen');
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mobile: '9820000001', password: 'Demo@12345', role: 'citizen' })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      login(data);
+                      navigate('/citizen');
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('[QuickLogin] Falling back to local auth:', e);
+                  }
                   login({
                     token: 'jwt-citizen-demo',
                     role: 'citizen',
@@ -603,10 +618,25 @@ export const LoginPage = () => {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setLoginIdentifier('9800000001');
                   setLoginPassword('Demo@12345');
                   setLoginRole('officer');
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mobile: '9800000001', password: 'Demo@12345', role: 'officer' })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      login(data);
+                      navigate('/officer');
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('[QuickLogin] Falling back to local auth:', e);
+                  }
                   login({
                     token: 'jwt-officer-demo',
                     role: 'officer',
@@ -621,10 +651,25 @@ export const LoginPage = () => {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setLoginIdentifier('9810010001');
                   setLoginPassword('Demo@12345');
                   setLoginRole('worker');
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mobile: '9810010001', password: 'Demo@12345', role: 'worker' })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      login(data);
+                      navigate('/worker');
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('[QuickLogin] Falling back to local auth:', e);
+                  }
                   login({
                     token: 'jwt-worker-demo',
                     role: 'worker',
@@ -639,10 +684,25 @@ export const LoginPage = () => {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setLoginIdentifier('admin@janmitra.gov.in');
                   setLoginPassword('Demo@12345');
                   setLoginRole('admin');
+                  try {
+                    const res = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ username: 'admin@janmitra.gov.in', password: 'Demo@12345', role: 'admin' })
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      login(data);
+                      navigate('/admin');
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('[QuickLogin] Falling back to local auth:', e);
+                  }
                   login({
                     token: 'jwt-admin-demo',
                     role: 'admin',
@@ -661,7 +721,7 @@ export const LoginPage = () => {
       </div>
 
       <footer className="mt-6 text-center text-xs text-slate-500">
-        JANMITRA &bull; Developed by Team ResolveIT &bull; Nagpur Municipal Corporation
+        JANMITRA &bull; Developed by Team ResolveIT &bull; Municipal Corporation
       </footer>
     </div>
   );

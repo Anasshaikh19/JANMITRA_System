@@ -65,10 +65,20 @@ else:
         }
     }
 
-# Enable eager Celery execution strictly during test runs so local development is unaffected
-if 'test' in sys.argv:
+# Enable eager Celery execution during tests or when Redis is offline in local dev
+def _is_redis_broker_up():
+    import socket
+    try:
+        sock = socket.create_connection(('127.0.0.1', 6379), timeout=0.08)
+        sock.close()
+        return True
+    except (OSError, socket.error):
+        return False
+
+if 'test' in sys.argv or not _is_redis_broker_up():
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
+
 
 
 # ==============================================================================

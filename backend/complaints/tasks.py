@@ -31,9 +31,8 @@ def notify_officer_on_new_complaint(complaint_id):
         # 1. Citizen acknowledgment notification
         Notification.objects.create(
             recipient=complaint.citizen,
-            notification_type=Notification.NotificationType.IN_APP,
             title=f"Complaint Logged: {complaint.tracking_id}",
-            message=(
+            body=(
                 f"Your issue '{complaint.title}' has been registered in {ward_label} "
                 f"under {dept_label}. Track status using ID: {complaint.tracking_id}."
             ),
@@ -48,9 +47,8 @@ def notify_officer_on_new_complaint(complaint_id):
         for officer in dept_officers:
             Notification.objects.create(
                 recipient=officer,
-                notification_type=Notification.NotificationType.IN_APP,
                 title=f"New {complaint.department.short_name} Issue: {complaint.category.name}",
-                message=(
+                body=(
                     f"A new issue '{complaint.title}' was reported in {ward_label} "
                     f"at {complaint.address}. Priority: {complaint.priority_level}."
                 ),
@@ -91,9 +89,8 @@ def check_sla_escalations():
             for admin in nmc_admins:
                 Notification.objects.create(
                     recipient=admin,
-                    notification_type=Notification.NotificationType.IN_APP,
                     title=f"SLA Breached: {complaint.tracking_id}",
-                    message=(
+                    body=(
                         f"Complaint '{complaint.title}' in {complaint.ward.name if complaint.ward else 'Ward'} "
                         f"is pending for over 48 hours. Escalated to HIGH."
                     ),

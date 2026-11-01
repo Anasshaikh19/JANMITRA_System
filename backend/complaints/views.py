@@ -303,17 +303,24 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             complaint = serializer.save()
 
             def _dispatch_post_commit_tasks():
-                # After successful database commit, dispatch Celery task for AI processing
+                # After successful database commit, dispatch tasks (with offline broker safeguard)
                 try:
                     process_complaint_ai.delay(str(complaint.id))
                 except Exception as e:
-                    logger.error(f"Failed to dispatch process_complaint_ai for complaint {complaint.id}: {e}")
+                    logger.warning(f"Could not queue process_complaint_ai asynchronously: {e}")
+                    try:
+                        process_complaint_ai(str(complaint.id))
+                    except Exception as inner_e:
+                        logger.warning(f"Synchronous process_complaint_ai fallback failed: {inner_e}")
 
-                # Notification task dispatch
                 try:
                     notify_officer_on_new_complaint.delay(str(complaint.id))
                 except Exception as e:
-                    logger.warning(f"Could not dispatch notify_officer_on_new_complaint for {complaint.id}: {e}")
+                    logger.warning(f"Could not queue notify_officer_on_new_complaint asynchronously: {e}")
+                    try:
+                        notify_officer_on_new_complaint(str(complaint.id))
+                    except Exception as inner_e:
+                        logger.warning(f"Synchronous notify fallback failed: {inner_e}")
 
             transaction.on_commit(_dispatch_post_commit_tasks)
 
