@@ -6,6 +6,17 @@ import WardBadge from '../../components/WardBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import { formatDeptName } from '../../utils/chartHelpers';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Cell,
+  Legend,
+} from 'recharts';
 
 // 4 Municipal Departments
 const DEPARTMENTS = [
@@ -93,6 +104,55 @@ const AdminPanel = () => {
       return matchDept && matchWard && matchSearch;
     });
   }, [workersList, selectedDept, wardFilter, workerSearch]);
+
+    const crossDeptChartData = useMemo(() => {
+    return [
+      {
+        id: 'PWD',
+        category: 'Roads (PWD)',
+        fullName: 'Public Works Department (PWD)',
+        total: DEPT_STATS_DATA.PWD.total,
+        pending: DEPT_STATS_DATA.PWD.pending,
+        resolved: DEPT_STATS_DATA.PWD.resolved,
+        in_progress: DEPT_STATS_DATA.PWD.in_progress,
+        color: '#1A56DB',
+        icon: '🛣️',
+      },
+      {
+        id: 'SWM',
+        category: 'Waste (SWM)',
+        fullName: 'Solid Waste Management (SWM)',
+        total: DEPT_STATS_DATA.SWM.total,
+        pending: DEPT_STATS_DATA.SWM.pending,
+        resolved: DEPT_STATS_DATA.SWM.resolved,
+        in_progress: DEPT_STATS_DATA.SWM.in_progress,
+        color: '#0E9F6E',
+        icon: '🗑️',
+      },
+      {
+        id: 'WSD',
+        category: 'Water (PHE)',
+        fullName: 'Public Health Engineering (PHE)',
+        total: DEPT_STATS_DATA.WSD.total,
+        pending: DEPT_STATS_DATA.WSD.pending,
+        resolved: DEPT_STATS_DATA.WSD.resolved,
+        in_progress: DEPT_STATS_DATA.WSD.in_progress,
+        color: '#06B6D4',
+        icon: '💧',
+      },
+      {
+        id: 'ELEC',
+        category: 'Lighting (ELEC)',
+        fullName: 'Street Lighting & Electrical (ELEC)',
+        total: DEPT_STATS_DATA.ELEC.total,
+        pending: DEPT_STATS_DATA.ELEC.pending,
+        resolved: DEPT_STATS_DATA.ELEC.resolved,
+        in_progress: DEPT_STATS_DATA.ELEC.in_progress,
+        color: '#EAB308',
+        icon: '💡',
+      },
+    ];
+  }, []);
 
   const currentStats = DEPT_STATS_DATA[selectedDept] || DEPT_STATS_DATA.ALL;
 
@@ -295,6 +355,125 @@ const AdminPanel = () => {
                   <div className="text-xs font-bold text-success">Resolved & Verified</div>
                   <div className="text-2xl font-black text-dark mt-1">{currentStats.resolved}</div>
                 </div>
+              </div>
+            </section>
+
+            {/* 3. COMPLAINTS BY DEPARTMENT CATEGORY BARCHART (MUNICIPAL CROSS-DEPARTMENT OVERVIEW) */}
+            <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-dark flex items-center gap-2">
+                    <span>Complaints by Department Category</span>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+                      Cross-Department Overview
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Consolidated civic complaints volume, resolution velocity, and active backlogs across municipal departments
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                  <span className="text-slate-500">Total City Complaints:</span>
+                  <strong className="text-slate-900 font-black">
+                    {DEPT_STATS_DATA.ALL.total}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Recharts BarChart Container */}
+              <div className="h-72 w-full pt-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={crossDeptChartData}
+                    margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis
+                      dataKey="category"
+                      tick={{ fontSize: 12, fill: '#334155', fontWeight: 700 }}
+                      axisLine={{ stroke: '#CBD5E1' }}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: '#475569' }}
+                      axisLine={{ stroke: '#CBD5E1' }}
+                      allowDecimals={false}
+                    />
+                    <RechartsTooltip
+                      cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white p-3 rounded-xl shadow-xl border border-slate-200 text-xs space-y-1.5">
+                              <div className="font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-1">
+                                <span
+                                  className="w-3 h-3 rounded-full shrink-0"
+                                  style={{ backgroundColor: data.color }}
+                                />
+                                <span>{data.fullName}</span>
+                                <span>{data.icon}</span>
+                              </div>
+                              <div className="text-slate-700 font-semibold flex justify-between gap-4">
+                                <span>Total Complaints:</span>
+                                <strong className="text-dark font-black">{data.total}</strong>
+                              </div>
+                              <div className="text-emerald-700 font-medium flex justify-between gap-4">
+                                <span>Resolved:</span>
+                                <strong>{data.resolved}</strong>
+                              </div>
+                              <div className="text-purple-700 font-medium flex justify-between gap-4">
+                                <span>In Progress:</span>
+                                <strong>{data.in_progress}</strong>
+                              </div>
+                              <div className="text-amber-700 font-medium flex justify-between gap-4">
+                                <span>Pending:</span>
+                                <strong>{data.pending}</strong>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="total" name="Total Complaints" radius={[8, 8, 0, 0]}>
+                      {crossDeptChartData.map((entry, index) => (
+                        <Cell
+                          key={`admin-cell-${index}`}
+                          fill={entry.color}
+                          className="transition-all duration-300 hover:opacity-90 cursor-pointer"
+                          onClick={() => setSelectedDept(entry.id)}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Department Chips with click-to-filter */}
+              <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                {crossDeptChartData.map((item) => (
+                  <div
+                    key={item.category}
+                    onClick={() => setSelectedDept(item.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition shadow-2xs ${
+                      selectedDept === item.id
+                        ? 'bg-purple-50/80 border-purple-300 ring-2 ring-purple shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                    }`}
+                    title={`Click to filter by ${item.fullName}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{item.icon}</span>
+                      <div>
+                        <span className="font-bold text-slate-800 text-[11px] block">{item.category}</span>
+                        <span className="text-[10px] text-slate-500">{item.resolved} resolved</span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-extrabold text-slate-900 text-sm">
+                      {item.total}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
 

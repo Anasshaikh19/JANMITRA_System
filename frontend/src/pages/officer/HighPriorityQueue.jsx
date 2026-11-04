@@ -8,6 +8,8 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import ErrorMessage from '../../components/ErrorMessage';
 import api from '../../api/client';
 import { getStoredComplaints, updateComplaint } from '../../utils/complaintStore';
+import { useAuth } from '../../context/AuthContext';
+import { resolveOfficerDeptCode, matchesDepartment, DEPARTMENT_WORKERS } from '../../utils/departmentData';
 
 // On-duty municipal workers indexed by ward
 const ON_DUTY_WORKERS = [
@@ -230,7 +232,15 @@ const calculateSla = (item) => {
   };
 };
 
-const HighPriorityQueue = () => {
+const HighPriorityQueue = ({ officerDeptCode: propDeptCode }) => {
+  const { user } = useAuth();
+  const deptCode = useMemo(() => {
+    return propDeptCode || resolveOfficerDeptCode(user);
+  }, [propDeptCode, user]);
+
+  const departmentWorkers = useMemo(() => {
+    return DEPARTMENT_WORKERS[deptCode] || ON_DUTY_WORKERS;
+  }, [deptCode]);
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -284,9 +294,11 @@ const HighPriorityQueue = () => {
         setComplaints(highPriorityOnly);
       } else {
         const stored = getStoredComplaints().filter((c) =>
-          ['critical', 'high'].includes(String(c.priority || '').toLowerCase())
+          ['critical', 'high'].includes(String(c.priority || '').toLowerCase()) &&
+          matchesDepartment(c, deptCode)
         );
-        setComplaints(stored.length > 0 ? stored : SEED_HIGH_PRIORITY_COMPLAINTS);
+        const seedFiltered = SEED_HIGH_PRIORITY_COMPLAINTS.filter((c) => matchesDepartment(c, deptCode));
+        setComplaints(stored.length > 0 ? stored : (seedFiltered.length > 0 ? seedFiltered : SEED_HIGH_PRIORITY_COMPLAINTS));
       }
     } catch (e) {
       console.warn('High priority fetch error, loading seed queue:', e.message);
@@ -310,7 +322,7 @@ const HighPriorityQueue = () => {
     const matchingWorker = ON_DUTY_WORKERS.find(
       (w) => Number(w.ward) === wardNum && w.status === 'On Duty'
     );
-    setSelectedWorkerId(matchingWorker?.id || ON_DUTY_WORKERS[0]?.id || '');
+    setSelectedWorkerId(matchingWorker?.id || departmentWorkers[0]?.id || '');
   };
 
   const closeAssignModal = () => {
@@ -323,7 +335,7 @@ const HighPriorityQueue = () => {
   const handleConfirmAssignment = async () => {
     if (!assignModalComplaint || !selectedWorkerId) return;
 
-    const worker = ON_DUTY_WORKERS.find((w) => w.id === selectedWorkerId);
+    const worker = departmentWorkers.find((w) => w.id === selectedWorkerId);
     if (!worker) return;
 
     const complaintId = assignModalComplaint.id;
@@ -403,9 +415,9 @@ const HighPriorityQueue = () => {
       Number(String(assignModalComplaint.ward).replace(/\D/g, '')) || 1;
 
     if (showAllWardsOverride) {
-      return ON_DUTY_WORKERS;
+      return departmentWorkers;
     }
-    return ON_DUTY_WORKERS.filter(
+    return departmentWorkers.filter(
       (w) => Number(w.ward) === wardNum && w.status === 'On Duty'
     );
   }, [assignModalComplaint, showAllWardsOverride]);

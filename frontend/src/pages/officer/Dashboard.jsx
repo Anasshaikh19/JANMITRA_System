@@ -27,6 +27,14 @@ import OfficerSidebarDrawer from '../../components/OfficerSidebarDrawer';
 import { getStoredComplaints, updateComplaint } from '../../utils/complaintStore';
 import HighPriorityQueue from './HighPriorityQueue';
 import { formatDeptName } from '../../utils/chartHelpers';
+import {
+  resolveOfficerDeptCode,
+  matchesDepartment,
+  DEPARTMENT_INFO,
+  DEPARTMENT_WORKERS,
+  DEPARTMENT_ISSUE_TYPES,
+  DEPARTMENT_BASELINES,
+} from '../../utils/departmentData';
 
 // Core palette matching the JANMITRA design system
 const COLORS = {
@@ -212,10 +220,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [kpiData, setKpiData] = useState(MOCK_KPI);
-  const [categoryData, setCategoryData] = useState(DEFAULT_CATEGORY_DATA);
+  // categoryData removed - cross-department chart now in Admin Portal
   const [wardStats, setWardStats] = useState(MOCK_WARD_STATS);
   const [trendsData, setTrendsData] = useState(MOCK_TRENDS.day);
-  const [workers, setWorkers] = useState(MOCK_WORKERS);
+  // workers managed by department state above
 
   // Quick Actions, Sidebar & Modals State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -227,9 +235,62 @@ const Dashboard = () => {
   const [toastMessage, setToastMessage] = useState(null);
   const [pendingValidationCount, setPendingValidationCount] = useState(4);
 
+  const officerDeptCode = useMemo(() => resolveOfficerDeptCode(user), [user]);
+  const deptMeta = useMemo(() => DEPARTMENT_INFO[officerDeptCode] || DEPARTMENT_INFO.PWD, [officerDeptCode]);
   const deptName = useMemo(() => {
-    return formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD');
-  }, [user]);
+    return formatDeptName(user?.department_name || user?.department || user?.dept || officerDeptCode);
+  }, [user, officerDeptCode]);
+
+  const [analyticsViewTab, setAnalyticsViewTab] = useState('workers'); // 'workers' | 'issues'
+
+  // Initialize and synchronize workers strictly for this department
+  const [workers, setWorkers] = useState(() => DEPARTMENT_WORKERS[officerDeptCode] || DEPARTMENT_WORKERS.PWD);
+  useEffect(() => {
+    setWorkers(DEPARTMENT_WORKERS[officerDeptCode] || DEPARTMENT_WORKERS.PWD);
+  }, [officerDeptCode]);
+
+  // Worker Workload & Productivity BarChart Data
+  const workerWorkloadChartData = useMemo(() => {
+    return workers.map((w) => ({
+      name: w.name ? w.name.split(' ')[0] : 'Worker',
+      fullName: w.name,
+      id: w.id,
+      ward: w.ward,
+      specialization: w.specialization,
+      status: w.status,
+      active_tasks: w.active_tasks || 0,
+      completed_tasks: w.completed_this_week || 0,
+      avg_days: w.avg_days || '2.0',
+    }));
+  }, [workers]);
+
+  // Department-specific issue subcategories BarChart Data
+  const departmentIssuesChartData = useMemo(() => {
+    const issueConfigs = DEPARTMENT_ISSUE_TYPES[officerDeptCode] || DEPARTMENT_ISSUE_TYPES.PWD;
+    const all = getStoredComplaints().filter((c) => matchesDepartment(c, officerDeptCode));
+
+    return issueConfigs.map((cfg) => {
+      const matchCount = all.filter((c) => {
+        const text = `${c.title || ''} ${c.description || ''} ${c.category || ''}`.toLowerCase();
+        const words = cfg.type.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !['road', 'waste', 'water', 'street'].includes(w));
+        return words.some(w => text.includes(w));
+      }).length;
+
+      const total = cfg.baseTotal + matchCount;
+      const resolved = cfg.baseResolved + Math.floor(matchCount * 0.6);
+      const pending = Math.max(0, total - resolved);
+
+      return {
+        type: cfg.type,
+        shortType: cfg.type.length > 18 ? cfg.type.substring(0, 16) + '..' : cfg.type,
+        icon: cfg.icon,
+        total,
+        resolved,
+        pending,
+        color: cfg.color,
+      };
+    });
+  }, [officerDeptCode]);
 
   // Toast feedback helper
   const showToast = (type, text) => {
@@ -316,8 +377,8 @@ const Dashboard = () => {
         setWorkers(workersRes.value.data);
       }
     } catch (err) {
-      // Aggregate live statistics from shared complaintStore
-      const all = getStoredComplaints();
+      // Aggregate live statistics strictly for this department
+      const all = getStoredComplaints().filter((c) => matchesDepartment(c, officerDeptCode));
       const filtered = all.filter((c) => {
         const matchWard =
           filterQuery.ward === 'All' ||
@@ -330,6 +391,8 @@ const Dashboard = () => {
           String(c.priority).toLowerCase() === String(filterQuery.severity).toLowerCase();
         return matchWard && matchStatus && matchSeverity;
       });
+
+      const deptBaseline = DEPARTMENT_BASELINES[officerDeptCode] || DEPARTMENT_BASELINES.PWD;
 
       const pendingCount = filtered.filter((c) =>
         ['Pending', 'Submitted', 'Validated'].includes(c.status)
@@ -358,49 +421,43 @@ const Dashboard = () => {
       ).length;
 
       setKpiData({
-        total: (filtered.length || 0) + 480,
-        pending: pendingCount + 64,
-        in_progress: inProgCount + 112,
-        resolved: resCount + 284,
-        rejected: rejCount + 26,
-        avg_resolution_days: '2.8 days',
+        total: (filtered.length || 0) + deptBaseline.total,
+        pending: pendingCount + deptBaseline.pending,
+        in_progress: inProgCount + deptBaseline.in_progress,
+        resolved: resCount + deptBaseline.resolved,
+        rejected: rejCount + deptBaseline.rejected,
+        avg_resolution_days: deptBaseline.avgDays,
         severity_distribution: [
-          { name: 'Critical', value: critCount + 42, color: COLORS.red },
-          { name: 'High', value: highCount + 98, color: COLORS.orange },
-          { name: 'Medium', value: medCount + 214, color: COLORS.amber },
-          { name: 'Low', value: lowCount + 132, color: COLORS.grey },
+          { name: 'Critical', value: critCount + deptBaseline.severities[0].value, color: COLORS.red },
+          { name: 'High', value: highCount + deptBaseline.severities[1].value, color: COLORS.orange },
+          { name: 'Medium', value: medCount + deptBaseline.severities[2].value, color: COLORS.amber },
+          { name: 'Low', value: lowCount + deptBaseline.severities[3].value, color: COLORS.grey },
         ],
       });
 
-      // 1. Recharts BarChart data calculation (Roads, Garbage, Water, Lighting)
-      const computedCategories = computeCategoryBreakdown(all);
-      setCategoryData(computedCategories);
-
-      // 3. Ward stats breakdown for progress meters (Wards 1 to 4)
+      // 3. Ward stats breakdown strictly for this department
       const wardBreakdown = [1, 2, 3, 4].map((wNum) => {
         const inWard = all.filter((c) => Number(c.ward) === wNum);
-        const base = MOCK_WARD_STATS.find((m) => m.wardNum === wNum) || {
-          pending: 15,
-          in_progress: 25,
-          resolved: 65,
-        };
+        const basePending = Math.round(deptBaseline.pending / 4);
+        const baseInProg = Math.round(deptBaseline.in_progress / 4);
+        const baseResolved = Math.round(deptBaseline.resolved / 4);
         return {
           ward: `Ward ${wNum}`,
           wardNum: wNum,
           pending:
-            base.pending +
+            basePending +
             inWard.filter((c) => ['Pending', 'Submitted', 'Validated'].includes(c.status)).length,
           in_progress:
-            base.in_progress +
+            baseInProg +
             inWard.filter((c) => ['Assigned', 'In-Progress'].includes(c.status)).length,
           resolved:
-            base.resolved +
+            baseResolved +
             inWard.filter((c) => ['Work Done', 'Closed', 'Resolved'].includes(c.status)).length,
         };
       });
       setWardStats(wardBreakdown);
       setTrendsData(MOCK_TRENDS[trendGrouping] || MOCK_TRENDS.day);
-      setWorkers(MOCK_WORKERS);
+      setWorkers(DEPARTMENT_WORKERS[officerDeptCode] || DEPARTMENT_WORKERS.PWD);
 
       // Check count of complaints flagged with confidence < 0.50
       const lowConfidenceCount = all.filter(
@@ -410,7 +467,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterQuery, trendGrouping, computeCategoryBreakdown]);
+  }, [filterQuery, trendGrouping]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -774,118 +831,231 @@ const Dashboard = () => {
               </div>
             </section>
 
-            {/* 1 & 2: RECHARTS BARCHART (CATEGORIES) & 3: WARD DISTRIBUTION PROGRESS METERS */}
+            {/* 1 & 2: DEPARTMENT ANALYTICS BARCHART & WARD DISTRIBUTION PROGRESS METERS */}
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* 1 & 2. LEFT: Recharts BarChart: X=Categories (Roads, Garbage, Water, Lighting), Y=Total Complaints */}
-              {/* Color-coded bars matching department themes (Blue, Green, Cyan, Yellow) */}
+              {/* 1 & 2. LEFT: Department-Specific Analytics (Worker Workload OR Department Issue Types) */}
               <div className="lg:col-span-7 bg-white rounded-2xl shadow-xs border border-slate-200 p-5 flex flex-col justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
                       <h2 className="text-base font-extrabold text-dark flex items-center gap-2">
-                        <span>Complaints by Department Category</span>
-                        <span className="px-2 py-0.5 rounded-full bg-blue-50 text-primary text-[10px] font-bold border border-blue-200">
-                          Recharts BarChart
+                        <span>{deptMeta.icon} {deptMeta.shortName} Operations & Workforce</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${deptMeta.badgeClass}`}>
+                          {deptMeta.shortName} Only
                         </span>
                       </h2>
                       <p className="text-xs text-slate-500">
-                        Category volume with department theme colors (Roads=Blue, Garbage=Green, Water=Cyan, Lighting=Yellow)
+                        {analyticsViewTab === 'workers'
+                          ? `Field personnel active task workload and weekly completion velocity for ${deptMeta.name}`
+                          : `Breakdown of specific ${deptMeta.shortName} municipal issue types and resolution progress`}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                      <span>Total:</span>
-                      <strong className="text-slate-900 font-black">
-                        {categoryData.reduce((acc, curr) => acc + curr.total, 0)}
-                      </strong>
+                    {/* View Switcher Tabs: Workers vs Issue Types */}
+                    <div className="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-50 text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setAnalyticsViewTab('workers')}
+                        className={`px-3 py-1 rounded transition flex items-center gap-1.5 ${
+                          analyticsViewTab === 'workers'
+                            ? 'bg-primary text-white shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <span>👷</span>
+                        <span>Worker Workload</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAnalyticsViewTab('issues')}
+                        className={`px-3 py-1 rounded transition flex items-center gap-1.5 ${
+                          analyticsViewTab === 'issues'
+                            ? 'bg-primary text-white shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <span>📋</span>
+                        <span>Issue Types</span>
+                      </button>
                     </div>
                   </div>
 
                   {/* Recharts BarChart Container */}
                   <div className="h-72 w-full pt-1">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={categoryData}
-                        margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                        <XAxis
-                          dataKey="category"
-                          tick={{ fontSize: 12, fill: '#334155', fontWeight: 700 }}
-                          axisLine={{ stroke: '#CBD5E1' }}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 12, fill: '#475569' }}
-                          axisLine={{ stroke: '#CBD5E1' }}
-                          allowDecimals={false}
-                        />
-                        <RechartsTooltip
-                          cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white p-3 rounded-xl shadow-xl border border-slate-200 text-xs space-y-1.5">
-                                  <div className="font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-1">
-                                    <span
-                                      className="w-3 h-3 rounded-full shrink-0"
-                                      style={{ backgroundColor: data.color }}
-                                    />
-                                    <span>{data.fullName}</span>
-                                    <span>{data.icon}</span>
+                      {analyticsViewTab === 'workers' ? (
+                        <BarChart
+                          data={workerWorkloadChartData}
+                          margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fontSize: 11, fill: '#334155', fontWeight: 700 }}
+                            axisLine={{ stroke: '#CBD5E1' }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: '#475569' }}
+                            axisLine={{ stroke: '#CBD5E1' }}
+                            allowDecimals={false}
+                          />
+                          <RechartsTooltip
+                            cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 rounded-xl shadow-xl border border-slate-200 text-xs space-y-1.5">
+                                    <div className="font-extrabold text-slate-900 flex items-center justify-between border-b border-slate-100 pb-1 gap-2">
+                                      <span>{data.fullName} ({data.id})</span>
+                                      <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-mono font-bold">
+                                        Ward {data.ward}
+                                      </span>
+                                    </div>
+                                    <div className="text-slate-500 text-[11px] font-medium">
+                                      Specialization: {data.specialization}
+                                    </div>
+                                    <div className="text-amber-700 font-semibold flex justify-between gap-4">
+                                      <span>Active Queue Tasks:</span>
+                                      <strong className="font-black">{data.active_tasks}</strong>
+                                    </div>
+                                    <div className="text-emerald-700 font-semibold flex justify-between gap-4">
+                                      <span>Completed (Week):</span>
+                                      <strong>{data.completed_tasks}</strong>
+                                    </div>
+                                    <div className="text-slate-600 text-[11px] flex justify-between gap-4 pt-1 border-t border-slate-100">
+                                      <span>Duty Status:</span>
+                                      <span className="font-bold">{data.status}</span>
+                                    </div>
                                   </div>
-                                  <div className="text-slate-700 font-semibold flex justify-between gap-4">
-                                    <span>Total Complaints:</span>
-                                    <strong className="text-dark font-black">{data.total}</strong>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                          <Bar
+                            dataKey="active_tasks"
+                            name="Active Tasks (Workload Depth)"
+                            fill="#F59E0B"
+                            radius={[6, 6, 0, 0]}
+                          />
+                          <Bar
+                            dataKey="completed_tasks"
+                            name="Completed Tasks (Week)"
+                            fill="#10B981"
+                            radius={[6, 6, 0, 0]}
+                          />
+                        </BarChart>
+                      ) : (
+                        <BarChart
+                          data={departmentIssuesChartData}
+                          margin={{ top: 15, right: 15, left: -10, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                          <XAxis
+                            dataKey="shortType"
+                            tick={{ fontSize: 10, fill: '#334155', fontWeight: 700 }}
+                            axisLine={{ stroke: '#CBD5E1' }}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: '#475569' }}
+                            axisLine={{ stroke: '#CBD5E1' }}
+                            allowDecimals={false}
+                          />
+                          <RechartsTooltip
+                            cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-white p-3 rounded-xl shadow-xl border border-slate-200 text-xs space-y-1.5">
+                                    <div className="font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-1">
+                                      <span>{data.icon}</span>
+                                      <span>{data.type}</span>
+                                    </div>
+                                    <div className="text-slate-700 font-semibold flex justify-between gap-4">
+                                      <span>Total Grievances:</span>
+                                      <strong className="text-dark font-black">{data.total}</strong>
+                                    </div>
+                                    <div className="text-emerald-700 font-medium flex justify-between gap-4">
+                                      <span>Resolved:</span>
+                                      <strong>{data.resolved}</strong>
+                                    </div>
+                                    <div className="text-amber-700 font-medium flex justify-between gap-4">
+                                      <span>Pending / Active:</span>
+                                      <strong>{data.pending}</strong>
+                                    </div>
                                   </div>
-                                  <div className="text-emerald-700 font-medium flex justify-between gap-4">
-                                    <span>Resolved:</span>
-                                    <strong>{data.resolved}</strong>
-                                  </div>
-                                  <div className="text-amber-700 font-medium flex justify-between gap-4">
-                                    <span>Pending:</span>
-                                    <strong>{data.pending}</strong>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        {/* Single Bar component with individual color-coded Cells */}
-                        <Bar dataKey="total" name="Total Complaints" radius={[8, 8, 0, 0]}>
-                          {categoryData.map((entry, index) => (
-                            <Cell
-                              key={`category-cell-${index}`}
-                              fill={entry.color}
-                              className="transition-all duration-300 hover:opacity-90"
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                          <Bar
+                            dataKey="total"
+                            name={`Total ${deptMeta.shortName} Complaints`}
+                            fill={deptMeta.color}
+                            radius={[6, 6, 0, 0]}
+                          />
+                          <Bar
+                            dataKey="resolved"
+                            name="Resolved & Verified"
+                            fill="#10B981"
+                            radius={[6, 6, 0, 0]}
+                          />
+                        </BarChart>
+                      )}
                     </ResponsiveContainer>
                   </div>
                 </div>
 
-                {/* Color-Coded Department Chips */}
-                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {categoryData.map((item) => (
-                    <div
-                      key={item.category}
-                      className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 shadow-2xs"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="font-bold text-slate-800 text-[11px]">{item.category}</span>
-                      </div>
-                      <span className="font-mono font-extrabold text-slate-900 text-xs">
-                        {item.total}
-                      </span>
-                    </div>
-                  ))}
+                {/* Bottom Chips: Workers or Issues */}
+                <div className="pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  {analyticsViewTab === 'workers'
+                    ? workers.slice(0, 6).map((worker) => (
+                        <div
+                          key={worker.id}
+                          onClick={() => setSelectedWorker(worker)}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer transition shadow-2xs"
+                          title={`Click to view ${worker.name}'s task profile`}
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                worker.status === 'On Duty'
+                                  ? 'bg-emerald-500'
+                                  : worker.status === 'In Field'
+                                  ? 'bg-blue-500'
+                                  : 'bg-slate-400'
+                              }`}
+                            />
+                            <span className="font-bold text-slate-800 text-[11px] truncate">
+                              {worker.name}
+                            </span>
+                          </div>
+                          <span className="font-mono font-bold text-slate-700 text-xs shrink-0 ml-1">
+                            {worker.active_tasks} active
+                          </span>
+                        </div>
+                      ))
+                    : departmentIssuesChartData.map((item) => (
+                        <div
+                          key={item.type}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-sm shrink-0">{item.icon}</span>
+                            <span className="font-bold text-slate-800 text-[11px] truncate" title={item.type}>
+                              {item.type}
+                            </span>
+                          </div>
+                          <span className="font-mono font-extrabold text-slate-900 text-xs shrink-0 ml-1">
+                            {item.total}
+                          </span>
+                        </div>
+                      ))}
                 </div>
               </div>
 
@@ -1152,7 +1322,7 @@ const Dashboard = () => {
 
             {/* HIGH PRIORITY QUEUE COMPONENT */}
             <section id="high-priority-section">
-              <HighPriorityQueue />
+              <HighPriorityQueue officerDeptCode={officerDeptCode} />
             </section>
 
             {/* 6. WORKER WORKLOAD TABLE */}
