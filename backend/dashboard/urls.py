@@ -7,6 +7,7 @@ from .views import (
     CategoryBreakdownView,
     ComplaintsExportView,
     DashboardOverviewView,
+    PublicLandingStatsView,
     DeptKPIView,
     HighPriorityView,
     ManualValidateView,
@@ -23,6 +24,7 @@ app_name = 'dashboard'
 
 urlpatterns = [
     # System settings endpoint
+    path('public-stats/', PublicLandingStatsView.as_view(), name='public_stats'),
     path('settings/', SystemSettingsView.as_view(), name='settings'),
     path('admin/settings/', SystemSettingsView.as_view(), name='admin_settings'),
 

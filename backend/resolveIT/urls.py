@@ -31,7 +31,7 @@ from complaints.views import (
     WorkerTaskStatusView,
     WorkerProofUploadView,
 )
-from dashboard.views import SystemSettingsView
+from dashboard.views import SystemSettingsView, PublicLandingStatsView
 
 
 def api_root_view(request):
@@ -70,6 +70,7 @@ urlpatterns = [
     path('api/v1/auth/', include('accounts.urls')),
 
     # Metadata master endpoints (public frontend dropdowns)
+    path('api/v1/public/stats/', PublicLandingStatsView.as_view(), name='public_stats_direct'),
     path('api/v1/meta/categories/', MetaCategoryListView.as_view(), name='meta_categories'),
     path('api/v1/meta/wards/', MetaWardListView.as_view(), name='meta_wards'),
 

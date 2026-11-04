@@ -41,7 +41,14 @@ export const LoginPage = () => {
   const { login } = useAuth();
 
   // Active Tab state ('login' | 'register')
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname === '/register' || window.location.search.includes('tab=register')) {
+        return 'register';
+      }
+    }
+    return 'login';
+  });
 
   // Loading state during API requests
   const [isLoading, setIsLoading] = useState(false);
