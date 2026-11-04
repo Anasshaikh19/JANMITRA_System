@@ -30,7 +30,31 @@ const MapAutoFitBounds = ({ markers, center, singleZoom = 15, autoFit = true, pa
   const map = useMap();
 
   useEffect(() => {
-    if (!autoFit || !map) return;
+    if (!map) return;
+
+    // Crucial: Leaflet requires invalidateSize when rendered in dynamic tabs or conditional containers
+    try {
+      map.invalidateSize();
+    } catch {}
+
+    const timer1 = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {}
+    }, 150);
+
+    const timer2 = setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {}
+    }, 450);
+
+    if (!autoFit) {
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
 
     if (markers && markers.length > 0) {
       const validPoints = markers
@@ -68,6 +92,11 @@ const MapAutoFitBounds = ({ markers, center, singleZoom = 15, autoFit = true, pa
         duration: 0.5,
       });
     }
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [markers, center, autoFit, singleZoom, map, padding]);
 
   return null;
@@ -353,7 +382,7 @@ const LeafletMap = ({
 
   return (
     <div className="w-full flex flex-col gap-2.5">
-      <div className={`relative overflow-hidden border border-slate-200/90 bg-slate-100 ${className}`}>
+      <div className={`relative overflow-hidden border border-slate-200/90 bg-slate-100 ${className}`} style={{ minHeight: "380px" }}>
         {/* Category Legend Pill Overlay */}
         {showLegend && (
           <div className="absolute top-3 left-3 z-[400] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md border border-slate-200/80 text-[11px] font-bold text-slate-700 flex items-center gap-2.5 flex-wrap pointer-events-auto">

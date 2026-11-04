@@ -43,6 +43,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { addComplaint } from '../../utils/complaintStore';
 
 // Default Central Coordinates: Nagpur Zero Mile Stone
 const NAGPUR_CENTER = {
@@ -1131,6 +1132,31 @@ export const CitizenSubmit = () => {
 
       const ticketId = data.tracking_id || data.id || 'NMC-2026-018';
       const complaintId = data.id || ticketId;
+
+      // Sync into local complaintStore for instant pipeline reactivity across Officer & Worker portals
+      try {
+        addComplaint({
+          id: complaintId,
+          tracking_id: ticketId,
+          title: data.title || `${activeCategoryObj?.title} Issue`,
+          category: data.category || activeCategoryObj?.title,
+          dept: activeCategoryObj?.code || 'PWD',
+          department: data.department || activeCategoryObj?.department,
+          ward: data.ward || selectedWard,
+          address: location.address || data.address || NAGPUR_CENTER.defaultAddress,
+          status: 'Submitted',
+          priority: activeSeverity || 'Medium',
+          description: description,
+          location_lat: location.lat,
+          location_lng: location.lng,
+          created_at: new Date().toISOString(),
+          has_photos: photos.length > 0,
+          photo_count: photos.length,
+          images: photos.map((p) => p.previewUrl),
+        });
+      } catch (storeErr) {
+        console.warn('[Submit] Failed to sync with local complaintStore:', storeErr);
+      }
 
       setSubmittedComplaint({
         id: complaintId,
