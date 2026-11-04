@@ -2,15 +2,17 @@
  * ==============================================================================
  * JANMITRA - Civic Issue Reporting & Management System
  * File: src/pages/LoginPage.jsx
- * Developer: Faizan Rayeen (Citizen Portal Lead)
+ * Developer: Faizan Rayeen (Citizen Portal Lead) & Om (Integration Lead)
  * Description: Complete, professional Login and Registration page for all
  *              user roles (citizen, worker, dept_officer, admin).
- *              Mobile-first responsive card layout using Tailwind CSS.
+ *              Supports dual identifier login (Phone Number or Email Address),
+ *              email capture during Citizen registration, and instant
+ *              one-click navigation back to the JANMITRA Public Landing Page.
  * ==============================================================================
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const getApiBaseUrl = () => {
@@ -61,15 +63,16 @@ export const LoginPage = () => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Login Form State
+  // Login Form State (Supports Mobile Number OR Email Address)
   const [loginForm, setLoginForm] = useState({
-    mobile: '',
+    identifier: '',
     password: ''
   });
 
-  // Register Form State
+  // Register Form State (Includes Email, Mobile, Ward, Name, Password)
   const [registerForm, setRegisterForm] = useState({
     name: '',
+    email: '',
     mobile: '',
     ward: '',
     password: '',
@@ -108,16 +111,23 @@ export const LoginPage = () => {
   };
 
   /**
-   * Validate Login inputs
+   * Validate Login inputs (accepts valid 10-digit phone OR email format)
    */
   const validateLoginForm = () => {
     const errors = {};
-    const mobileDigits = loginForm.mobile.trim();
+    const identifier = loginForm.identifier.trim();
 
-    if (!mobileDigits) {
-      errors.mobile = 'Mobile number is required';
-    } else if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
-      errors.mobile = 'Enter a valid 10-digit mobile number';
+    if (!identifier) {
+      errors.identifier = 'Mobile number or email address is required';
+    } else if (identifier.includes('@')) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
+        errors.identifier = 'Please enter a valid email address';
+      }
+    } else {
+      const mobileDigits = identifier.replace(/\D/g, '');
+      if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
+        errors.identifier = 'Enter a valid 10-digit mobile number (e.g. 9876543210)';
+      }
     }
 
     if (!loginForm.password) {
@@ -134,6 +144,7 @@ export const LoginPage = () => {
   const validateRegisterForm = () => {
     const errors = {};
     const mobileDigits = registerForm.mobile.trim();
+    const emailVal = registerForm.email.trim();
 
     if (!registerForm.name.trim()) {
       errors.name = 'Full name is required';
@@ -141,10 +152,15 @@ export const LoginPage = () => {
       errors.name = 'Full name must be at least 3 characters';
     }
 
+    // Optional or validated email format
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
     if (!mobileDigits) {
       errors.mobile = 'Mobile number is required';
     } else if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
-      errors.mobile = 'Enter a valid 10-digit mobile number';
+      errors.mobile = 'Enter a valid 10-digit mobile number (starting with 6-9)';
     }
 
     if (!registerForm.ward) {
@@ -153,8 +169,8 @@ export const LoginPage = () => {
 
     if (!registerForm.password) {
       errors.password = 'Password is required';
-    } else if (registerForm.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
+    } else if (registerForm.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
     }
 
     if (!registerForm.confirmPassword) {
@@ -180,21 +196,33 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     try {
+      const identifier = loginForm.identifier.trim();
+      const isEmail = identifier.includes('@');
+      const cleanMobile = identifier.replace(/\D/g, '');
+
+      const payload = {
+        username: identifier,
+        mobile: isEmail ? '' : cleanMobile,
+        email: isEmail ? identifier.toLowerCase() : '',
+        password: loginForm.password
+      };
+
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          mobile: loginForm.mobile.trim(),
-          password: loginForm.password
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const errMsg = data.error || data.detail || (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : null) || 'Invalid mobile number or password.';
+        const errMsg =
+          data.error ||
+          data.detail ||
+          (typeof data.errors === 'object' ? Object.values(data.errors).flat().join(' ') : null) ||
+          'Invalid mobile number, email, or password.';
         setApiError(errMsg);
         return;
       }
@@ -226,6 +254,9 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     try {
+      const wardInt = parseInt(registerForm.ward, 10);
+      const emailVal = registerForm.email.trim();
+
       // 1. Send registration payload
       const regResponse = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
         method: 'POST',
@@ -235,7 +266,8 @@ export const LoginPage = () => {
         body: JSON.stringify({
           name: registerForm.name.trim(),
           mobile: registerForm.mobile.trim(),
-          ward: registerForm.ward,
+          email: emailVal ? emailVal.toLowerCase() : '',
+          ward: isNaN(wardInt) ? registerForm.ward : wardInt,
           password: registerForm.password
         })
       });
@@ -243,21 +275,31 @@ export const LoginPage = () => {
       const regData = await regResponse.json().catch(() => ({}));
 
       if (!regResponse.ok) {
-        const errMsg = regData.error || regData.detail || (typeof regData.errors === 'object' ? Object.values(regData.errors).flat().join(' ') : null) || 'Registration failed. Please check your inputs.';
+        const errMsg =
+          regData.error ||
+          regData.detail ||
+          (typeof regData.errors === 'object' ? Object.values(regData.errors).flat().join(' ') : null) ||
+          (regData.email ? (Array.isArray(regData.email) ? regData.email.join(' ') : regData.email) : null) ||
+          (regData.mobile ? (Array.isArray(regData.mobile) ? regData.mobile.join(' ') : regData.mobile) : null) ||
+          'Registration failed. Please check your inputs.';
         setApiError(errMsg);
         return;
       }
 
       // 2. Auto-login immediately after successful registration
+      const loginPayload = {
+        username: registerForm.mobile.trim(),
+        mobile: registerForm.mobile.trim(),
+        email: emailVal ? emailVal.toLowerCase() : '',
+        password: registerForm.password
+      };
+
       const loginResponse = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          mobile: registerForm.mobile.trim(),
-          password: registerForm.password
-        })
+        body: JSON.stringify(loginPayload)
       });
 
       const loginData = await loginResponse.json().catch(() => ({}));
@@ -278,17 +320,40 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
+    <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8 font-sans">
+      
+      {/* ================= TOP NAVIGATION BAR ================= */}
+      <div className="w-full max-w-md mx-auto mb-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-[#0d2a53] transition py-1.5 px-3 rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow active:scale-95"
+        >
+          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Back to Home</span>
+        </button>
+
+        <span className="text-[11px] text-slate-500 font-medium tracking-wide">
+          Nagpur Municipal Portal
+        </span>
+      </div>
+
       {/* Centered Mobile-First Container */}
-      <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+      <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200 bg-white">
         
         {/* ================= HEADER CARD ================= */}
-        <div className="bg-[#0d2a53] text-white px-6 py-8 text-center relative">
+        <div className="bg-[#0d2a53] text-white px-6 py-7 text-center relative">
           {/* Subtle Background Glow Accent */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
 
           {/* Logo / Emblems */}
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner">
+          <div 
+            onClick={() => navigate('/')}
+            className="cursor-pointer inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner hover:bg-white/20 transition"
+            title="Go to JANMITRA Home"
+          >
             <span className="text-3xl" role="img" aria-label="Municipal Corporation Logo">🏛️</span>
           </div>
 
@@ -311,7 +376,7 @@ export const LoginPage = () => {
         </div>
 
         {/* ================= FORM CARD ================= */}
-        <div className="bg-white p-6 sm:p-8">
+        <div className="p-6 sm:p-8">
           
           {/* TABS HEADER */}
           <div className="flex border-b border-slate-200 mb-6">
@@ -370,38 +435,48 @@ export const LoginPage = () => {
           {/* ================= 1. LOGIN FORM ================= */}
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
-              {/* Mobile Number */}
+              {/* Phone or Email Identifier */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
+                  Mobile Number or Email <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
-                    +91
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    {loginForm.identifier.includes('@') ? (
+                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    )}
                   </div>
                   <input
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="9876543210"
-                    value={loginForm.mobile}
+                    type="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="9876543210 or citizen@nagpur.gov.in"
+                    value={loginForm.identifier}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setLoginForm((prev) => ({ ...prev, mobile: val }));
-                      if (loginErrors.mobile) setLoginErrors((prev) => ({ ...prev, mobile: null }));
+                      setLoginForm((prev) => ({ ...prev, identifier: e.target.value }));
+                      if (loginErrors.identifier) setLoginErrors((prev) => ({ ...prev, identifier: null }));
                     }}
-                    className={`w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      loginErrors.mobile
+                    className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                      loginErrors.identifier
                         ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                         : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
                     }`}
                   />
                 </div>
-                {loginErrors.mobile && (
+                {loginErrors.identifier && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
-                    <span>•</span> {loginErrors.mobile}
+                    <span>•</span> {loginErrors.identifier}
                   </p>
                 )}
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Citizens may enter their registered mobile number or email address.
+                </p>
               </div>
 
               {/* Password */}
@@ -433,12 +508,10 @@ export const LoginPage = () => {
                     aria-label="Toggle password visibility"
                   >
                     {showLoginPassword ? (
-                      /* Eye Off Icon */
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                       </svg>
                     ) : (
-                      /* Eye On Icon */
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -472,9 +545,19 @@ export const LoginPage = () => {
                 )}
               </button>
 
-              {/* Role Hints Footer */}
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Authorized for Citizens, Workers, Officers & Admins
+              {/* Switch to Register link */}
+              <div className="pt-2 text-center text-xs text-slate-500">
+                New citizen?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('register');
+                    setApiError('');
+                  }}
+                  className="font-bold text-[#0d2a53] hover:underline"
+                >
+                  Create citizen account
+                </button>
               </div>
             </form>
           )}
@@ -489,7 +572,7 @@ export const LoginPage = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Faizan Rayeen"
+                  placeholder="e.g. Ramesh Patel"
                   value={registerForm.name}
                   onChange={(e) => {
                     setRegisterForm((prev) => ({ ...prev, name: e.target.value }));
@@ -504,6 +587,41 @@ export const LoginPage = () => {
                 {registerErrors.name && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
                     <span>•</span> {registerErrors.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Email Address (New Field Requested) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Email Address <span className="text-slate-400 font-normal lowercase">(optional for updates)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="e.g. citizen@nagpur.gov.in"
+                    value={registerForm.email}
+                    onChange={(e) => {
+                      setRegisterForm((prev) => ({ ...prev, email: e.target.value }));
+                      if (registerErrors.email) setRegisterErrors((prev) => ({ ...prev, email: null }));
+                    }}
+                    className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                      registerErrors.email
+                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
+                    }`}
+                  />
+                </div>
+                {registerErrors.email && (
+                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
+                    <span>•</span> {registerErrors.email}
                   </p>
                 )}
               </div>
@@ -542,7 +660,7 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Ward Selection Dropdown */}
+              {/* Ward Selection Dropdown (Values must be Integer IDs 1, 2, 3, 4) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Municipal Ward <span className="text-red-500">*</span>
@@ -560,10 +678,10 @@ export const LoginPage = () => {
                   }`}
                 >
                   <option value="">Select your ward</option>
-                  <option value="Ward 1">Ward 1 (Dharampeth / West Nagpur)</option>
-                  <option value="Ward 2">Ward 2 (Dhantoli / Central Nagpur)</option>
-                  <option value="Ward 3">Ward 3 (Nehru Nagar / East Nagpur)</option>
-                  <option value="Ward 4">Ward 4 (Mangalwari / North Nagpur)</option>
+                  <option value="1">Ward 1 (Dharampeth / West Nagpur)</option>
+                  <option value="2">Ward 2 (Dhantoli / Central Nagpur)</option>
+                  <option value="3">Ward 3 (Nehru Nagar / East Nagpur)</option>
+                  <option value="4">Ward 4 (Mangalwari / North Nagpur)</option>
                 </select>
                 {registerErrors.ward && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
@@ -580,7 +698,7 @@ export const LoginPage = () => {
                 <div className="relative">
                   <input
                     type={showRegPassword ? 'text' : 'password'}
-                    placeholder="Minimum 8 characters"
+                    placeholder="Minimum 6 characters"
                     value={registerForm.password}
                     onChange={(e) => {
                       setRegisterForm((prev) => ({ ...prev, password: e.target.value }));
@@ -676,21 +794,43 @@ export const LoginPage = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
-                    <span>Creating Account...</span>
+                    <span>Creating Citizen Account...</span>
                   </>
                 ) : (
                   <span>Register & Continue</span>
                 )}
               </button>
 
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Official registration for citizens of Nagpur Municipal Corporation
+              {/* Switch to Login link */}
+              <div className="pt-2 text-center text-xs text-slate-500">
+                Already registered?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setApiError('');
+                  }}
+                  className="font-bold text-[#0d2a53] hover:underline"
+                >
+                  Sign in to your account
+                </button>
               </div>
             </form>
           )}
 
+          {/* ================= GO TO HOME BUTTON (IN-CARD) ================= */}
+          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0d2a53] hover:text-blue-700 transition px-3 py-1.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200"
+            >
+              <span>🏠</span> Return to Public Home Page
+            </button>
+          </div>
+
           {/* Quick Dev Switcher */}
-          <div className="mt-5 pt-4 border-t border-slate-100">
+          <div className="mt-4 pt-3 border-t border-slate-100">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
               ⚡ Quick Test Login (Seeded Demo Accounts)
             </div>
@@ -698,7 +838,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9820000001', password: 'Demo@12345' });
+                  setLoginForm({ identifier: '9820000001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-citizen-demo',
                     role: 'citizen',
@@ -713,7 +853,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9800000001', password: 'Demo@12345' });
+                  setLoginForm({ identifier: '9800000001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-officer-demo',
                     role: 'officer',
@@ -728,7 +868,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: '9810010001', password: 'Demo@12345' });
+                  setLoginForm({ identifier: '9810010001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-worker-demo',
                     role: 'worker',
@@ -743,7 +883,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ mobile: 'admin@janmitra.gov.in', password: 'Demo@12345' });
+                  setLoginForm({ identifier: 'admin@janmitra.gov.in', password: 'Demo@12345' });
                   login({
                     token: 'jwt-admin-demo',
                     role: 'admin',
@@ -762,7 +902,7 @@ export const LoginPage = () => {
       </div>
 
       {/* Bottom Footer Note */}
-      <footer className="mt-8 text-center text-xs text-slate-500">
+      <footer className="mt-6 text-center text-xs text-slate-500">
         JANMITRA &bull; Developed by Team ResolveIT &bull; Nagpur Municipal Corporation
       </footer>
     </div>

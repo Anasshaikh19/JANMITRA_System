@@ -95,9 +95,17 @@ class CitizenRegisterSerializer(serializers.Serializer):
         if not password_val or len(str(password_val)) < 6:
             raise serializers.ValidationError({'password': 'Password must be at least 6 characters long.'})
 
-        # 5. Clean email
+        # 5. Clean email & enforce uniqueness when provided
         if 'email' in attrs and attrs['email']:
-            attrs['email'] = str(attrs['email']).strip().lower()
+            email_val = str(attrs['email']).strip().lower()
+            if email_val:
+                if User.objects.filter(email__iexact=email_val).exists():
+                    raise serializers.ValidationError({'email': 'A user with this email address already exists.'})
+                attrs['email'] = email_val
+            else:
+                attrs['email'] = ''
+        else:
+            attrs['email'] = ''
 
         return attrs
 
@@ -155,8 +163,8 @@ class LoginSerializer(serializers.Serializer):
 
         if not identifier or not str(identifier).strip():
             raise serializers.ValidationError({
-                'mobile': 'Mobile number is required.',
-                'detail': 'Mobile number and password are required.'
+                'identifier': 'Mobile number or email is required.',
+                'detail': 'Mobile number or email and password are required.'
             })
 
         if not password or not str(password).strip():
@@ -171,7 +179,7 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise serializers.ValidationError({
-                'detail': 'Invalid mobile number or password.'
+                'detail': 'Invalid mobile number, email, or password.'
             })
 
         if not user.is_active:
