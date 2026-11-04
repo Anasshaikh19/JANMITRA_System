@@ -71,6 +71,9 @@ if 'REDIS_URL' not in os.environ:
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
 
+CELERY_TASK_PUBLISH_RETRY = False
+CELERY_TASK_PUBLISH_RETRY_POLICY = {'max_retries': 0}
+
 # Enable eager Celery execution strictly during test runs so local development is unaffected
 if 'test' in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True

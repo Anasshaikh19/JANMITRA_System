@@ -305,13 +305,13 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             def _dispatch_post_commit_tasks():
                 # After successful database commit, dispatch Celery task for AI processing
                 try:
-                    process_complaint_ai.delay(str(complaint.id))
+                    process_complaint_ai.apply_async(args=[str(complaint.id)], retry=False)
                 except Exception as e:
-                    logger.error(f"Failed to dispatch process_complaint_ai for complaint {complaint.id}: {e}")
+                    logger.warning(f"Could not dispatch process_complaint_ai for complaint {complaint.id}: {e}")
 
                 # Notification task dispatch
                 try:
-                    notify_officer_on_new_complaint.delay(str(complaint.id))
+                    notify_officer_on_new_complaint.apply_async(args=[str(complaint.id)], retry=False)
                 except Exception as e:
                     logger.warning(f"Could not dispatch notify_officer_on_new_complaint for {complaint.id}: {e}")
 

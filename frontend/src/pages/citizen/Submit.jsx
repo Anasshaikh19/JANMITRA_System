@@ -1193,13 +1193,23 @@ export const CitizenSubmit = () => {
 
     } catch (err) {
       console.error('[Submit] API submission failed:', err);
+      const extractErrorText = (item) => {
+        if (!item) return '';
+        if (typeof item === 'string') return item;
+        if (Array.isArray(item)) return item.map(extractErrorText).filter(Boolean).join(', ');
+        if (typeof item === 'object') {
+          return Object.values(item).map(extractErrorText).filter(Boolean).join(', ');
+        }
+        return String(item);
+      };
+
       let errMsg = err.response?.data?.detail || err.response?.data?.message;
       if (!errMsg && err.response?.data && typeof err.response.data === 'object') {
-        const entries = Object.entries(err.response.data);
-        if (entries.length > 0) {
-          const [key, val] = entries[0];
-          const valStr = Array.isArray(val) ? val.join(', ') : String(val);
-          errMsg = `${key}: ${valStr}`;
+        const parts = Object.entries(err.response.data)
+          .map(([k, v]) => `${k}: ${extractErrorText(v)}`)
+          .filter(Boolean);
+        if (parts.length > 0) {
+          errMsg = parts.join(' | ');
         }
       }
       setSubmitError(errMsg || err.message || 'Failed to submit complaint. Please check your network and try again.');

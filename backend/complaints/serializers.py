@@ -285,11 +285,6 @@ class ComplaintCreateSerializer(serializers.Serializer):
         default=79.0882,
         help_text='GPS Longitude (-180.0 to 180.0)'
     )
-    images = serializers.ListField(
-        child=serializers.FileField(),
-        required=False,
-        help_text='List of image files for evidence'
-    )
     address = serializers.CharField(
         max_length=255,
         required=False,
@@ -338,16 +333,6 @@ class ComplaintCreateSerializer(serializers.Serializer):
             for k in ['category_id', 'category_code', 'dept_id']:
                 if k in data and data[k] not in [None, '']:
                     data['category'] = data[k]
-                    break
-
-        # Images field normalization
-        if 'images' in data and not isinstance(data['images'], (list, tuple)):
-            data['images'] = [data['images']]
-        elif 'images' not in data:
-            for k in ['photos', 'image', 'photo']:
-                if k in data:
-                    val = data[k]
-                    data['images'] = val if isinstance(val, (list, tuple)) else [val]
                     break
 
         return super().to_internal_value(data)
@@ -434,22 +419,29 @@ class ComplaintCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         request = self.context.get('request')
 
-        # Gather images from request.FILES or attrs
+        # Gather images from request.FILES or request.data
         image_files = []
         if request and hasattr(request, 'FILES'):
             for k in ['images', 'photos', 'image', 'photo']:
                 if k in request.FILES:
                     image_files.extend(request.FILES.getlist(k))
 
-        if not image_files and 'images' in attrs:
-            passed = attrs['images']
-            if isinstance(passed, list):
-                image_files = [f for f in passed if f]
-            elif passed:
-                image_files = [passed]
+        if not image_files and request and hasattr(request, 'data'):
+            for k in ['images', 'photos', 'image', 'photo']:
+                val = request.data.get(k)
+                if val:
+                    if isinstance(val, (list, tuple)):
+                        image_files.extend(val)
+                    else:
+                        image_files.append(val)
 
-        # If no image files provided, provide a clean valid placeholder image
-        if not image_files:
+        real_image_files = []
+        for img in image_files:
+            if hasattr(img, 'read') or hasattr(img, 'chunks') or hasattr(img, 'size'):
+                real_image_files.append(img)
+
+        # If no valid image files provided, generate a clean valid placeholder image
+        if not real_image_files:
             from django.core.files.uploadedfile import SimpleUploadedFile
             placeholder_bytes = (
                 b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00'
@@ -460,16 +452,16 @@ class ComplaintCreateSerializer(serializers.Serializer):
                 b'\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xbf\x00\xff\xd9'
             )
             placeholder_file = SimpleUploadedFile("civic_issue_evidence.jpg", placeholder_bytes, content_type="image/jpeg")
-            image_files = [placeholder_file]
+            real_image_files = [placeholder_file]
 
-        for img in image_files:
+        for img in real_image_files:
             file_size = getattr(img, 'size', 0)
             if file_size > self.MAX_IMAGE_SIZE_BYTES:
                 raise serializers.ValidationError({
                     'images': f"Image '{getattr(img, 'name', 'file')}' exceeds maximum allowed size of 10MB."
                 })
 
-        attrs['images'] = image_files
+        attrs['images'] = real_image_files
         return attrs
 
     def create(self, validated_data):
