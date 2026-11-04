@@ -137,16 +137,25 @@ class LoginSerializer(serializers.Serializer):
     """
     username = serializers.CharField(
         required=False,
+        allow_blank=True,
+        allow_null=True,
+        default='',
         write_only=True,
         help_text='Mobile number or email address'
     )
     mobile = serializers.CharField(
         required=False,
+        allow_blank=True,
+        allow_null=True,
+        default='',
         write_only=True,
         help_text='Registered mobile number'
     )
-    email = serializers.EmailField(
+    email = serializers.CharField(
         required=False,
+        allow_blank=True,
+        allow_null=True,
+        default='',
         write_only=True,
         help_text='Registered email address'
     )

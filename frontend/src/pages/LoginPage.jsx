@@ -160,10 +160,13 @@ export const LoginPage = () => {
 
       const payload = {
         username: identifier,
-        mobile: isEmail ? '' : cleanMobile,
-        email: isEmail ? identifier.toLowerCase() : '',
         password: loginForm.password
       };
+      if (isEmail) {
+        payload.email = identifier.toLowerCase();
+      } else {
+        payload.mobile = cleanMobile;
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
@@ -222,8 +225,7 @@ export const LoginPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: demoIdentifier,
-          mobile: isEmail ? '' : cleanMobile,
-          email: isEmail ? demoIdentifier.toLowerCase() : '',
+          ...(isEmail ? { email: demoIdentifier.toLowerCase() } : { mobile: cleanMobile }),
           password: demoPassword
         })
       });

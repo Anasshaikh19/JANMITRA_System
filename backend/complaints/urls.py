@@ -30,6 +30,7 @@ router.register(r'wards', WardViewSet, basename='ward')
 router.register(r'', ComplaintViewSet, basename='complaint')
 
 urlpatterns = [
+    path('summary/', ComplaintViewSet.as_view({'get': 'summary'}), name='complaint-summary-explicit'),
     path('meta/categories/', MetaCategoryListView.as_view(), name='meta-categories-sub'),
     path('meta/wards/', MetaWardListView.as_view(), name='meta-wards-sub'),
     path('list/', ComplaintListView.as_view(), name='complaint-list-view'),

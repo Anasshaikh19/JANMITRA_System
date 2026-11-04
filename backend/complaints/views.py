@@ -464,6 +464,44 @@ class ComplaintViewSet(viewsets.ModelViewSet):
         """
         return ComplaintTimelineView().get(request, pk=pk)
 
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """
+        GET /api/v1/complaints/summary/
+        Returns civic grievance summary counts for the authenticated user.
+        """
+        qs = self.get_queryset()
+        total = qs.count()
+        open_count = qs.filter(status__in=[
+            Complaint.Status.SUBMITTED,
+            Complaint.Status.ASSIGNED,
+            Complaint.Status.VALIDATED,
+            Complaint.Status.PENDING_VALIDATION,
+            'SUBMITTED', 'ASSIGNED', 'VALIDATED', 'PENDING_VALIDATION'
+        ]).count()
+        in_progress_count = qs.filter(status__in=[
+            Complaint.Status.IN_PROGRESS,
+            Complaint.Status.IN_PROGRESS_ALT,
+            'IN_PROGRESS', 'In-Progress'
+        ]).count()
+        resolved_count = qs.filter(status__in=[
+            Complaint.Status.RESOLVED,
+            Complaint.Status.CLOSED,
+            Complaint.Status.WORK_DONE,
+            'RESOLVED', 'CLOSED', 'Work Done'
+        ]).count()
+
+        return Response({
+            'total': total,
+            'total_count': total,
+            'open': open_count,
+            'open_count': open_count,
+            'in_progress': in_progress_count,
+            'in_progress_count': in_progress_count,
+            'resolved': resolved_count,
+            'resolved_count': resolved_count,
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'], url_path='proof-upload')
     def proof_upload(self, request, pk=None):
         """
