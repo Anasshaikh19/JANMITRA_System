@@ -91,7 +91,7 @@ def duplicate_check(complaint) -> Dict[str, Any]:
         try:
             from complaints.models import Complaint
             queryset = getattr(Complaint, 'objects', None)
-        except ImportError:
+        except Exception:
             queryset = None
 
     if queryset is None:

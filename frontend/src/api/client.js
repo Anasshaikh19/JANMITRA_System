@@ -59,6 +59,13 @@ const processQueue = (error, token = null) => {
 
 api.interceptors.request.use(
   (config) => {
+    if (config.url) {
+      if (config.url.startsWith('/api/v1/')) {
+        config.url = config.url.replace('/api/v1/', '/v1/');
+      } else if (config.url.startsWith('api/v1/')) {
+        config.url = config.url.replace('api/v1/', 'v1/');
+      }
+    }
     const token = getStoredToken();
     if (token) {
       config.headers = {

@@ -131,9 +131,12 @@ class FakeDetector:
             t1 = time.perf_counter()
             exec_time = round((t1 - t0) * 1000.0, 3)
             result["execution_time_ms"] = exec_time
+            result["is_fake"] = not result.get("real", True)
             self._log_stage(result)
 
         return result
+
+    predict = check
 
     def _log_stage(self, res: Dict[str, Any]):
         logger.info(

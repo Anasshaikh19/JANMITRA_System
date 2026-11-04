@@ -106,9 +106,52 @@ def check_sla_escalations():
 
 def analyze_complaint_ai(complaint):
     """
-    Hook for external AI vision / NLP / fraud detection service.
-    External AI model providers, computer vision inference, or test mocks connect here.
+    Connects to JANMITRA Unified AI Pipeline Runner (Layers 1-4):
+    Forensic anti-spoofing (EXIF + ELA + ViT), YOLOv8 civic object detection,
+    100m geospatial duplicate check, and AHP priority scoring.
     """
+    import os
+    try:
+        from ai_pipeline.pipeline import run_full_ai_pipeline
+        photo_path = None
+        if hasattr(complaint, 'images') and complaint.images.exists():
+            first_img = complaint.images.first()
+            if first_img and hasattr(first_img, 'image') and first_img.image:
+                try:
+                    photo_path = first_img.image.path
+                except Exception:
+                    photo_path = None
+
+        cat_name = complaint.category.name if getattr(complaint, 'category', None) else "pothole"
+        lat = getattr(complaint, 'latitude', None)
+        lon = getattr(complaint, 'longitude', None)
+        if lat is None and getattr(complaint, 'location', None):
+            try:
+                lat = complaint.location.y
+                lon = complaint.location.x
+            except Exception:
+                pass
+
+        if photo_path and os.path.exists(photo_path):
+            res = run_full_ai_pipeline(
+                photo_path=photo_path,
+                latitude=lat,
+                longitude=lon,
+                category=cat_name,
+                description=complaint.description or "",
+                complaint_id=str(complaint.id),
+                complaint_instance=complaint
+            )
+            score = float(res.get('priority_score', 50.0))
+            is_fraud = bool(res.get('is_fake', False) or res.get('status') == 'Rejected')
+            return {
+                'priority_score': score,
+                'is_fraud': is_fraud,
+                'ai_result': res,
+            }
+    except Exception as exc:
+        logger.warning(f"AI pipeline execution fallback: {exc}")
+
     if not complaint.priority_score:
         complaint.priority_score = 50.0
 

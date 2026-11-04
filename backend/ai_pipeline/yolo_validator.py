@@ -432,6 +432,9 @@ class YOLOValidator:
 
         t0 = time.perf_counter()
         try:
+            if isinstance(image_path_list, str):
+                image_path_list = [image_path_list]
+
             if not image_path_list:
                 return result
 
