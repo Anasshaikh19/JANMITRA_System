@@ -65,6 +65,12 @@ else:
         }
     }
 
+# Redis / Celery local fallback: default to 127.0.0.1 instead of docker hostname 'redis'
+if 'REDIS_URL' not in os.environ:
+    REDIS_URL = 'redis://127.0.0.1:6379/0'
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
+
 # Enable eager Celery execution strictly during test runs so local development is unaffected
 if 'test' in sys.argv:
     CELERY_TASK_ALWAYS_EAGER = True
