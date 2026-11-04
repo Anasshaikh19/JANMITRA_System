@@ -34,7 +34,30 @@ from complaints.views import (
 from dashboard.views import SystemSettingsView
 
 
+def api_root_view(request):
+    return JsonResponse({
+        "project": "JANMITRA Civic Grievance System",
+        "service": "Municipal Backend API Gateway",
+        "version": "1.0.0",
+        "status": "online",
+        "frontend": "http://localhost:5173",
+        "admin": "/admin/",
+        "endpoints": {
+            "health": "/api/v1/health/",
+            "auth": "/api/v1/auth/",
+            "complaints": "/api/v1/complaints/",
+            "dashboard": "/api/v1/dashboard/",
+            "notifications": "/api/v1/notifications/",
+            "categories": "/api/v1/meta/categories/",
+            "wards": "/api/v1/meta/wards/"
+        }
+    })
+
+
 urlpatterns = [
+    # Root API Gateway Landing
+    path('', api_root_view, name='api_root'),
+
     # System Health Check (Production-safe, checks DB, Redis, Celery)
     path('api/v1/health/', HealthCheckView.as_view(), name='health_check'),
     path('api/health/', HealthCheckView.as_view(), name='api_health_check'),
