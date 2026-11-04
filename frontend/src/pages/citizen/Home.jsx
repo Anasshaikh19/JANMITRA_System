@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { NotificationBell } from '../../components/NotificationBell';
 import { CategoryBadge, PriorityBadge, StatusBadge, WardBadge } from '../../components/Badges';
 import { BroadcastBanner } from '../../components/BroadcastBanner';
+import { getStoredComplaints } from '../../utils/complaintStore';
 
 export { BroadcastBanner };
 
@@ -106,11 +107,43 @@ export const CitizenHome = () => {
         }
 
         // 2. Process Complaints List
+        let list = [];
         if (complaintsRes.status === 'fulfilled' && complaintsRes.value?.data) {
           const cData = complaintsRes.value.data;
-          // Handle both pagination format { results: [...] } and flat array [...]
-          const list = Array.isArray(cData) ? cData : (cData.results || []);
-          setRecentComplaints(list.slice(0, 3));
+          list = Array.isArray(cData) ? cData : (cData.results || []);
+        }
+
+        // Merge any local reactive complaints submitted strictly by this citizen
+        try {
+          const stored = getStoredComplaints();
+          const userLocal = stored.filter(c =>
+            (user?.id && (c.citizen_id === user.id || c.citizenId === user.id)) ||
+            (user?.mobile && (c.citizen_mobile === user.mobile || c.mobile === user.mobile))
+          );
+          const existingIds = new Set(list.map(c => String(c.tracking_id || c.id)));
+          userLocal.forEach(c => {
+            if (!existingIds.has(String(c.tracking_id || c.id))) {
+              list.push(c);
+              existingIds.add(String(c.tracking_id || c.id));
+            }
+          });
+        } catch (storeErr) {
+          console.warn('[Home] Local complaints sync note:', storeErr);
+        }
+
+        setRecentComplaints(list.slice(0, 3));
+
+        // Sync summary counts if complaints exist locally
+        if (list.length > 0) {
+          const resolved = list.filter(c => {
+            const s = String(c.status || '').toUpperCase();
+            return s === 'RESOLVED' || s === 'CLOSED' || s === 'WORK DONE' || s === 'WORK_DONE';
+          }).length;
+          const open = list.length - resolved;
+          setSummary(prev => ({
+            open_count: Math.max(prev.open_count, open),
+            resolved_count: Math.max(prev.resolved_count, resolved)
+          }));
         }
       } catch (err) {
         console.error('[Home] Error fetching citizen home data:', err);

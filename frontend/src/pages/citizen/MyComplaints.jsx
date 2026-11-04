@@ -13,6 +13,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { CategoryBadge, PriorityBadge, StatusBadge, WardBadge } from '../../components/Badges';
+import { useAuth } from '../../context/AuthContext';
+import { getStoredComplaints } from '../../utils/complaintStore';
 
 /**
  * Format date to human-readable format or relative time
@@ -54,6 +56,8 @@ export const MyComplaints = () => {
   } catch (e) {
     navigate = (path) => { window.location.href = path; };
   }
+
+  const { user } = useAuth();
 
   // URL search params sync
   let [searchParams, setSearchParams] = useSearchParams();
@@ -108,6 +112,39 @@ export const MyComplaints = () => {
       } else if (data && Array.isArray(data.results)) {
         list = data.results;
         nextUrl = data.next;
+      }
+
+      // Merge local complaints belonging strictly to this user
+      try {
+        const stored = getStoredComplaints();
+        const userLocal = stored.filter(c =>
+          (user?.id && (c.citizen_id === user.id || c.citizenId === user.id)) ||
+          (user?.mobile && (c.citizen_mobile === user.mobile || c.mobile === user.mobile))
+        );
+        const filteredLocal = userLocal.filter(c => {
+          if (!tabObj.queryVal) return true;
+          const s = String(c.status || '').toLowerCase();
+          if (tabObj.queryVal === 'open') {
+            return s.includes('submit') || s.includes('assign') || s.includes('valid') || s.includes('open') || s.includes('pending');
+          }
+          if (tabObj.queryVal === 'in-progress') {
+            return s.includes('progress');
+          }
+          if (tabObj.queryVal === 'resolved') {
+            return s.includes('resolv') || s.includes('closed') || s.includes('done');
+          }
+          return true;
+        });
+
+        const existingIds = new Set(list.map(c => String(c.tracking_id || c.id)));
+        filteredLocal.forEach(c => {
+          if (!existingIds.has(String(c.tracking_id || c.id))) {
+            list.push(c);
+            existingIds.add(String(c.tracking_id || c.id));
+          }
+        });
+      } catch (storeErr) {
+        console.warn('[MyComplaints] Local sync note:', storeErr);
       }
 
       setComplaints((prev) => (append ? [...prev, ...list] : list));

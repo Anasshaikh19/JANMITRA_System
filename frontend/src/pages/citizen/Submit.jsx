@@ -1153,6 +1153,9 @@ export const CitizenSubmit = () => {
           has_photos: photos.length > 0,
           photo_count: photos.length,
           images: photos.map((p) => p.previewUrl),
+          citizen_id: user?.id,
+          citizen_name: user?.name || user?.full_name,
+          citizen_mobile: user?.mobile,
         });
       } catch (storeErr) {
         console.warn('[Submit] Failed to sync with local complaintStore:', storeErr);

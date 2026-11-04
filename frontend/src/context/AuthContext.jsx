@@ -125,6 +125,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (patch) => {
+    setUser((prev) => {
+      const updated = { ...(prev || {}), ...patch };
+      try {
+        localStorage.setItem('janmitra_user', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to persist updated user:', err);
+      }
+      return updated;
+    });
+  };
+
   const isAuthenticated = Boolean(token && token !== '[object Object]' && token !== 'null');
 
   return (
@@ -136,6 +148,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}

@@ -226,6 +226,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     department_short_name = serializers.CharField(source='department.short_name', read_only=True)
     department_code = serializers.CharField(source='department.short_name', read_only=True)
+    stats = serializers.SerializerMethodField()
+    reviews = serializers.SerializerMethodField()
+    rating_stats = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -249,6 +252,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'is_active',
             'is_staff',
             'registered_at',
+            'stats',
+            'reviews',
+            'rating_stats',
         ]
         read_only_fields = [
             'id',
@@ -261,7 +267,128 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'department_name',
             'department_short_name',
             'department_code',
+            'stats',
+            'reviews',
+            'rating_stats',
         ]
+
+    def get_stats(self, obj):
+        from complaints.models import Complaint
+        if obj.role == User.Role.CITIZEN:
+            qs = Complaint.objects.filter(citizen=obj)
+        elif obj.role == User.Role.WORKER:
+            qs = Complaint.objects.filter(assigned_worker=obj)
+        elif obj.role == User.Role.DEPT_OFFICER and obj.department:
+            qs = Complaint.objects.filter(department=obj.department)
+        else:
+            qs = Complaint.objects.all()
+
+        total = qs.count()
+        resolved = qs.filter(status__in=[
+            Complaint.Status.RESOLVED,
+            Complaint.Status.CLOSED,
+            Complaint.Status.WORK_DONE,
+            'RESOLVED', 'CLOSED', 'Work Done',
+        ]).count()
+        open_count = qs.filter(status__in=[
+            Complaint.Status.SUBMITTED,
+            Complaint.Status.ASSIGNED,
+            Complaint.Status.VALIDATED,
+            Complaint.Status.PENDING_VALIDATION,
+            'SUBMITTED', 'ASSIGNED', 'VALIDATED', 'PENDING_VALIDATION',
+        ]).count()
+        in_progress = qs.filter(status__in=[
+            Complaint.Status.IN_PROGRESS,
+            Complaint.Status.IN_PROGRESS_ALT,
+            'IN_PROGRESS', 'In-Progress',
+        ]).count()
+        pending = max(0, total - resolved)
+
+        return {
+            'total': total,
+            'resolved': resolved,
+            'pending': pending,
+            'open': open_count,
+            'in_progress': in_progress,
+        }
+
+    def get_reviews(self, obj):
+        from complaints.models import Complaint
+        if obj.role != User.Role.CITIZEN:
+            return []
+
+        rated_qs = Complaint.objects.filter(
+            citizen=obj,
+            status__in=[
+                Complaint.Status.RESOLVED,
+                Complaint.Status.CLOSED,
+                Complaint.Status.WORK_DONE,
+                'RESOLVED', 'CLOSED', 'Work Done',
+            ]
+        ).filter(
+            Q(citizen_rating__isnull=False) | ~Q(citizen_feedback='')
+        ).select_related('assigned_worker', 'department', 'category').order_by('-resolved_at', '-updated_at')
+
+        reviews_list = []
+        for c in rated_qs:
+            dept_name = c.department.name if c.department else (c.category.name if c.category else 'Civic Department')
+            worker_name = c.assigned_worker.full_name if c.assigned_worker else 'NMC Field Team'
+            formatted_date = c.resolved_at.strftime('%d %b %Y') if c.resolved_at else (c.updated_at.strftime('%d %b %Y') if c.updated_at else '')
+            reviews_list.append({
+                'id': f'rev-{c.id}',
+                'complaint_id': str(c.id),
+                'tracking_id': c.tracking_id or f'NMC-{c.id}',
+                'title': c.title or (c.category.name if c.category else 'Civic Complaint'),
+                'category': c.category.name if c.category else 'Civic Issue',
+                'department': dept_name,
+                'rating': c.citizen_rating or 5,
+                'resolved_at': formatted_date,
+                'remarks': c.citizen_feedback or 'Grievance resolved by NMC team.',
+                'worker_name': worker_name,
+            })
+        return reviews_list
+
+    def get_rating_stats(self, obj):
+        from complaints.models import Complaint
+        if obj.role != User.Role.CITIZEN:
+            return None
+
+        rated_qs = Complaint.objects.filter(
+            citizen=obj,
+            citizen_rating__isnull=False
+        )
+        rating_count = rated_qs.count()
+        if rating_count == 0:
+            return {
+                'avg_rating': 0,
+                'rating_count': 0,
+                'satisfaction_score': 100,
+                'satisfaction_grade': 'Active Citizen Standing',
+                'rating_breakdown': {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+            }
+
+        breakdown = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        total_stars = 0
+        for c in rated_qs:
+            r = c.citizen_rating
+            if r in breakdown:
+                breakdown[r] += 1
+                total_stars += r
+
+        avg = round(total_stars / rating_count, 1)
+        satisfaction_score = int(round((avg / 5.0) * 100))
+        grade = 'Grade A+ (Excellent Citizen Feedback)' if avg >= 4.5 else (
+            'Grade A (Good Feedback)' if avg >= 4.0 else (
+                'Grade B (Satisfactory)' if avg >= 3.0 else 'Needs Attention'
+            )
+        )
+        return {
+            'avg_rating': avg,
+            'rating_count': rating_count,
+            'satisfaction_score': satisfaction_score,
+            'satisfaction_grade': grade,
+            'rating_breakdown': breakdown,
+        }
 
 
 # Alias for backward compatibility across complaints/dashboard apps

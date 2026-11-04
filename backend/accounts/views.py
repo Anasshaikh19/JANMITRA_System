@@ -90,6 +90,22 @@ class CitizenRegisterView(generics.GenericAPIView):
                     'ward': ward_id,
                     'department': user.department.id if user.department else None,
                     'email': user.email,
+                    'registered_at': user.registered_at.isoformat() if user.registered_at else None,
+                    'stats': {
+                        'total': 0,
+                        'resolved': 0,
+                        'pending': 0,
+                        'open': 0,
+                        'in_progress': 0,
+                    },
+                    'rating_stats': {
+                        'avg_rating': 0,
+                        'rating_count': 0,
+                        'satisfaction_score': 100,
+                        'satisfaction_grade': 'Active Citizen Standing',
+                        'rating_breakdown': {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+                    },
+                    'reviews': [],
                 },
                 'message': 'Citizen registered successfully.',
             },
@@ -155,6 +171,7 @@ class LoginView(generics.GenericAPIView):
             else:
                 dept_name = user.department.name
 
+        profile_data = UserProfileSerializer(user).data
         user_data = {
             'id': user.id,
             'name': user.full_name,
@@ -171,6 +188,10 @@ class LoginView(generics.GenericAPIView):
             'dept_code': dept_short_name,
             'mobile': user.mobile,
             'email': user.email,
+            'registered_at': user.registered_at.isoformat() if user.registered_at else None,
+            'stats': profile_data.get('stats'),
+            'reviews': profile_data.get('reviews'),
+            'rating_stats': profile_data.get('rating_stats'),
         }
 
         return Response(
