@@ -3,11 +3,10 @@
  * JANMITRA - Civic Issue Reporting & Management System
  * File: src/pages/LoginPage.jsx
  * Developer: Faizan Rayeen (Citizen Portal Lead) & Om (Integration Lead)
- * Description: Complete, professional Login and Registration page for all
- *              user roles (citizen, worker, dept_officer, admin).
- *              Supports dual identifier login (Phone Number or Email Address),
- *              email capture during Citizen registration, and instant
- *              one-click navigation back to the JANMITRA Public Landing Page.
+ * Description: Public citizen & worker login and registration portal.
+ *              Dedicated exclusively to Citizens and Field Workers.
+ *              Department Officers and Admins use the official portal at /official/login.
+ *              Features REAL SimpleJWT backend authentication for all demo accounts.
  * ==============================================================================
  */
 
@@ -31,7 +30,6 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 export const LoginPage = () => {
-  // Navigation hook with fallback
   let navigate;
   try {
     navigate = useNavigate();
@@ -39,10 +37,8 @@ export const LoginPage = () => {
     navigate = (path) => { window.location.href = path; };
   }
 
-  // Auth context for persisting credentials & triggering FCM registration
   const { login } = useAuth();
 
-  // Active Tab state ('login' | 'register')
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       if (window.location.pathname === '/register' || window.location.search.includes('tab=register')) {
@@ -52,25 +48,21 @@ export const LoginPage = () => {
     return 'login';
   });
 
-  // Loading state during API requests
   const [isLoading, setIsLoading] = useState(false);
-
-  // Global API error message
   const [apiError, setApiError] = useState('');
 
-  // Password visibility toggles
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Login Form State (Supports Role Dropdown + Mobile/Email Identifier)
+  // Login Form State (Strictly Citizen & Field Worker)
   const [loginForm, setLoginForm] = useState({
-    role: 'citizen',
+    role: 'citizen', // 'citizen' | 'worker'
     identifier: '',
     password: ''
   });
 
-  // Register Form State (Includes Email, Mobile, Ward, Name, Password)
+  // Register Form State (Citizen Only)
   const [registerForm, setRegisterForm] = useState({
     name: '',
     email: '',
@@ -80,40 +72,9 @@ export const LoginPage = () => {
     confirmPassword: ''
   });
 
-  // Validation Error States
   const [loginErrors, setLoginErrors] = useState({});
   const [registerErrors, setRegisterErrors] = useState({});
 
-  /**
-   * Role-based routing redirection
-   * citizen      -> /citizen
-   * worker       -> /worker
-   * dept_officer -> /officer
-   * admin        -> /admin
-   */
-  const handleRoleRedirect = (role) => {
-    const cleanRole = (role || 'citizen').toLowerCase().trim();
-    switch (cleanRole) {
-      case 'admin':
-        navigate('/admin');
-        break;
-      case 'dept_officer':
-      case 'officer':
-        navigate('/officer');
-        break;
-      case 'worker':
-        navigate('/worker');
-        break;
-      case 'citizen':
-      default:
-        navigate('/citizen');
-        break;
-    }
-  };
-
-  /**
-   * Validate Login inputs (accepts valid 10-digit phone OR email format)
-   */
   const validateLoginForm = () => {
     const errors = {};
     const identifier = loginForm.identifier.trim();
@@ -139,9 +100,6 @@ export const LoginPage = () => {
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * Validate Register inputs
-   */
   const validateRegisterForm = () => {
     const errors = {};
     const mobileDigits = registerForm.mobile.trim();
@@ -153,7 +111,6 @@ export const LoginPage = () => {
       errors.name = 'Full name must be at least 3 characters';
     }
 
-    // Optional or validated email format
     if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
       errors.email = 'Please enter a valid email address';
     }
@@ -189,7 +146,7 @@ export const LoginPage = () => {
    * POST /api/v1/auth/login/
    */
   const handleLoginSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setApiError('');
 
     if (!validateLoginForm()) return;
@@ -210,9 +167,7 @@ export const LoginPage = () => {
 
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -228,23 +183,63 @@ export const LoginPage = () => {
         return;
       }
 
-      // Store in AuthContext (saves tokens and triggers FCM permission)
+      // Store REAL SimpleJWT tokens in AuthContext and localStorage
       await login(data);
 
-      // Determine user role and redirect to selected/authorized portal
       const returnedRole = (data.role || data.user?.role || loginForm.role || 'citizen').toLowerCase().trim();
-      if (loginForm.role === 'worker' && (returnedRole === 'worker' || returnedRole === 'admin')) {
+
+      if (returnedRole === 'worker' || loginForm.role === 'worker') {
         navigate('/worker');
-      } else if (loginForm.role === 'citizen' && (returnedRole === 'citizen' || returnedRole === 'admin')) {
-        navigate('/citizen');
-      } else if (loginForm.role === 'officer' && (returnedRole === 'officer' || returnedRole === 'dept_officer' || returnedRole === 'admin')) {
+      } else if (returnedRole === 'admin') {
+        navigate('/admin');
+      } else if (returnedRole === 'dept_officer' || returnedRole === 'officer') {
         navigate('/officer');
       } else {
-        handleRoleRedirect(returnedRole);
+        navigate('/citizen');
       }
     } catch (err) {
       console.error('[Login Error]', err);
       setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Real API Quick Login for Demo Accounts (Generates genuine JWT tokens)
+   */
+  const handleQuickDemoLogin = async (demoRole, demoIdentifier, demoPassword, targetPath) => {
+    setIsLoading(true);
+    setApiError('');
+    setLoginForm({ role: demoRole, identifier: demoIdentifier, password: demoPassword });
+
+    try {
+      const isEmail = demoIdentifier.includes('@');
+      const cleanMobile = demoIdentifier.replace(/\D/g, '');
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: demoIdentifier,
+          mobile: isEmail ? '' : cleanMobile,
+          email: isEmail ? demoIdentifier.toLowerCase() : '',
+          password: demoPassword
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setApiError(data.error || data.detail || 'Demo login failed');
+        return;
+      }
+
+      await login(data);
+      navigate(targetPath);
+    } catch (err) {
+      console.error('[Quick Demo Login Error]', err);
+      setApiError('Unable to connect to backend server for demo login.');
     } finally {
       setIsLoading(false);
     }
@@ -266,12 +261,9 @@ export const LoginPage = () => {
       const wardInt = parseInt(registerForm.ward, 10);
       const emailVal = registerForm.email.trim();
 
-      // 1. Send registration payload
       const regResponse = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: registerForm.name.trim(),
           mobile: registerForm.mobile.trim(),
@@ -295,7 +287,7 @@ export const LoginPage = () => {
         return;
       }
 
-      // 2. Auto-login immediately after successful registration
+      // Auto-login immediately with real JWT
       const loginPayload = {
         username: registerForm.mobile.trim(),
         mobile: registerForm.mobile.trim(),
@@ -305,9 +297,7 @@ export const LoginPage = () => {
 
       const loginResponse = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginPayload)
       });
 
@@ -315,10 +305,10 @@ export const LoginPage = () => {
 
       if (loginResponse.ok) {
         await login(loginData);
-        handleRoleRedirect(loginData.role || loginData.user?.role || 'citizen');
+        navigate('/citizen');
       } else {
         await login(regData);
-        handleRoleRedirect('citizen');
+        navigate('/citizen');
       }
     } catch (err) {
       console.error('[Register Error]', err);
@@ -331,7 +321,7 @@ export const LoginPage = () => {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8 font-sans">
       
-      {/* ================= TOP NAVIGATION BAR ================= */}
+      {/* Top Navigation Bar */}
       <div className="w-full max-w-md mx-auto mb-3 flex items-center justify-between">
         <button
           type="button"
@@ -344,20 +334,21 @@ export const LoginPage = () => {
           <span>Back to Home</span>
         </button>
 
-        <span className="text-[11px] text-slate-500 font-medium tracking-wide">
-          Nagpur Municipal Portal
-        </span>
+        <Link
+          to="/official/login"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 transition py-1.5 px-3 rounded-xl bg-purple-50 border border-purple-200 shadow-sm"
+        >
+          <span>🏛️ Official Staff Login</span>
+        </Link>
       </div>
 
-      {/* Centered Mobile-First Container */}
+      {/* Main Form Container */}
       <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200 bg-white">
         
-        {/* ================= HEADER CARD ================= */}
+        {/* Header Card */}
         <div className="bg-[#0d2a53] text-white px-6 py-7 text-center relative">
-          {/* Subtle Background Glow Accent */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
 
-          {/* Logo / Emblems */}
           <div 
             onClick={() => navigate('/')}
             className="cursor-pointer inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner hover:bg-white/20 transition"
@@ -366,28 +357,25 @@ export const LoginPage = () => {
             <span className="text-3xl" role="img" aria-label="Municipal Corporation Logo">🏛️</span>
           </div>
 
-          {/* Title */}
           <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-white uppercase">
             JANMITRA
           </h1>
 
-          {/* Authority Pill Badge */}
           <div className="mt-1">
             <span className="inline-block bg-blue-600/40 text-blue-200 border border-blue-400/30 text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Municipal Corporation
+              Citizen & Worker Portal
             </span>
           </div>
 
-          {/* Tagline */}
           <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-xs mx-auto leading-relaxed">
-            Civic Issue Reporting & Management System
+            Civic Grievance Reporting & Field Resolution System
           </p>
         </div>
 
-        {/* ================= FORM CARD ================= */}
+        {/* Form Body */}
         <div className="p-6 sm:p-8">
           
-          {/* TABS HEADER */}
+          {/* Tabs */}
           <div className="flex border-b border-slate-200 mb-6">
             <button
               type="button"
@@ -426,7 +414,7 @@ export const LoginPage = () => {
             </button>
           </div>
 
-          {/* ================= API ERROR BANNER ================= */}
+          {/* API Error Banner */}
           {apiError && (
             <div className="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 text-xs sm:text-sm animate-shake">
               <span className="text-base leading-none">⚠️</span>
@@ -441,10 +429,11 @@ export const LoginPage = () => {
             </div>
           )}
 
-          {/* ================= 1. LOGIN FORM ================= */}
+          {/* 1. LOGIN FORM */}
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
-              {/* Role Selector: Citizen vs Field Worker */}
+              
+              {/* Role Selector (ONLY Citizen or Field Worker) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   I am logging in as <span className="text-red-500">*</span>
@@ -456,21 +445,17 @@ export const LoginPage = () => {
                     className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-slate-900 outline-none transition duration-150 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100 font-semibold"
                   >
                     <option value="citizen">👤 Citizen (Grievance Portal)</option>
-                    <option value="worker">👷 Field Worker (Municipal Operations)</option>
-                    <option value="officer">🏢 Department Officer (PWD / SWM / PHE / ELEC)</option>
-                    <option value="admin">🏛️ Super Administrator (HQ)</option>
+                    <option value="worker">👷 Field Worker (Municipal Tasks)</option>
                   </select>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {loginForm.role === 'worker'
-                    ? 'Field workers can sign in using their registered mobile number or email.'
-                    : loginForm.role === 'citizen'
-                    ? 'Citizens of Nagpur reporting local civic issues.'
-                    : 'Municipal administrative and department personnel.'}
+                    ? 'Field workers assigned to municipal repair and sanitation tasks.'
+                    : 'Nagpur citizens tracking and reporting local civic issues.'}
                 </p>
               </div>
 
-              {/* Phone or Email Identifier */}
+              {/* Identifier Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Mobile Number or Email <span className="text-red-500">*</span>
@@ -491,7 +476,7 @@ export const LoginPage = () => {
                     type="text"
                     autoCapitalize="none"
                     autoCorrect="off"
-                    placeholder="9876543210 or citizen@nagpur.gov.in"
+                    placeholder={loginForm.role === 'worker' ? 'e.g. 9810010001 or worker@janmitra.gov.in' : 'e.g. 9876543210 or citizen@nagpur.gov.in'}
                     value={loginForm.identifier}
                     onChange={(e) => {
                       setLoginForm((prev) => ({ ...prev, identifier: e.target.value }));
@@ -509,18 +494,13 @@ export const LoginPage = () => {
                     <span>•</span> {loginErrors.identifier}
                   </p>
                 )}
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Citizens may enter their registered mobile number or email address.
-                </p>
               </div>
 
-              {/* Password */}
+              {/* Password Input */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Password <span className="text-red-500">*</span>
-                  </label>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
                   <input
                     type={showLoginPassword ? 'text' : 'password'}
@@ -542,16 +522,7 @@ export const LoginPage = () => {
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
                     aria-label="Toggle password visibility"
                   >
-                    {showLoginPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
+                    {showLoginPassword ? '👁️' : '👁️‍🗨️'}
                   </button>
                 </div>
                 {loginErrors.password && (
@@ -561,7 +532,7 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Login Submit Button */}
+              {/* Login Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -576,31 +547,29 @@ export const LoginPage = () => {
                     <span>Signing in...</span>
                   </>
                 ) : (
-                  <span>Sign In</span>
+                  <span>Sign In as {loginForm.role === 'worker' ? 'Field Worker' : 'Citizen'}</span>
                 )}
               </button>
 
-              {/* Switch to Register link */}
-              <div className="pt-2 text-center text-xs text-slate-500">
-                New citizen?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('register');
-                    setApiError('');
-                  }}
-                  className="font-bold text-[#0d2a53] hover:underline"
+              {/* Official Staff Link Callout */}
+              <div className="pt-3 pb-1">
+                <Link
+                  to="/official/login"
+                  className="w-full p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 flex items-center justify-between text-xs font-bold text-purple-900 transition"
                 >
-                  Create citizen account
-                </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🏢</span>
+                    <span>Department Officer or Admin?</span>
+                  </div>
+                  <span className="text-purple-600 font-extrabold">Official Login &rarr;</span>
+                </Link>
               </div>
             </form>
           )}
 
-          {/* ================= 2. REGISTER FORM ================= */}
+          {/* 2. REGISTER FORM */}
           {activeTab === 'register' && (
             <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
-              {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Full Name <span className="text-red-500">*</span>
@@ -626,34 +595,25 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Email Address (New Field Requested) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Email Address <span className="text-slate-400 font-normal lowercase">(optional for updates)</span>
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    placeholder="e.g. citizen@nagpur.gov.in"
-                    value={registerForm.email}
-                    onChange={(e) => {
-                      setRegisterForm((prev) => ({ ...prev, email: e.target.value }));
-                      if (registerErrors.email) setRegisterErrors((prev) => ({ ...prev, email: null }));
-                    }}
-                    className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.email
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                </div>
+                <input
+                  type="email"
+                  autoCapitalize="none"
+                  placeholder="citizen@nagpur.gov.in"
+                  value={registerForm.email}
+                  onChange={(e) => {
+                    setRegisterForm((prev) => ({ ...prev, email: e.target.value }));
+                    if (registerErrors.email) setRegisterErrors((prev) => ({ ...prev, email: null }));
+                  }}
+                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                    registerErrors.email
+                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
                 {registerErrors.email && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
                     <span>•</span> {registerErrors.email}
@@ -661,7 +621,6 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Mobile Number */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Mobile Number <span className="text-red-500">*</span>
@@ -695,7 +654,6 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Ward Selection Dropdown (Values must be Integer IDs 1, 2, 3, 4) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Municipal Ward <span className="text-red-500">*</span>
@@ -725,44 +683,24 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Password */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Password <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type={showRegPassword ? 'text' : 'password'}
-                    placeholder="Minimum 6 characters"
-                    value={registerForm.password}
-                    onChange={(e) => {
-                      setRegisterForm((prev) => ({ ...prev, password: e.target.value }));
-                      if (registerErrors.password) setRegisterErrors((prev) => ({ ...prev, password: null }));
-                    }}
-                    className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.password
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowRegPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showRegPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                <input
+                  type={showRegPassword ? 'text' : 'password'}
+                  placeholder="Minimum 6 characters"
+                  value={registerForm.password}
+                  onChange={(e) => {
+                    setRegisterForm((prev) => ({ ...prev, password: e.target.value }));
+                    if (registerErrors.password) setRegisterErrors((prev) => ({ ...prev, password: null }));
+                  }}
+                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                    registerErrors.password
+                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
                 {registerErrors.password && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
                     <span>•</span> {registerErrors.password}
@@ -770,46 +708,24 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Confirm Password */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Confirm Password <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
-                    value={registerForm.confirmPassword}
-                    onChange={(e) => {
-                      setRegisterForm((prev) => ({ ...prev, confirmPassword: e.target.value }));
-                      if (registerErrors.confirmPassword) {
-                        setRegisterErrors((prev) => ({ ...prev, confirmPassword: null }));
-                      }
-                    }}
-                    className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
-                      registerErrors.confirmPassword
-                        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                        : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showConfirmPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Re-enter your password"
+                  value={registerForm.confirmPassword}
+                  onChange={(e) => {
+                    setRegisterForm((prev) => ({ ...prev, confirmPassword: e.target.value }));
+                    if (registerErrors.confirmPassword) setRegisterErrors((prev) => ({ ...prev, confirmPassword: null }));
+                  }}
+                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                    registerErrors.confirmPassword
+                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
                 {registerErrors.confirmPassword && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
                     <span>•</span> {registerErrors.confirmPassword}
@@ -817,118 +733,37 @@ export const LoginPage = () => {
                 )}
               </div>
 
-              {/* Register Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full mt-2 py-3 px-4 rounded-xl text-white font-bold text-sm bg-[#0d2a53] hover:bg-[#133b73] active:bg-[#091e3b] transition duration-200 shadow-md shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    <span>Creating Citizen Account...</span>
-                  </>
-                ) : (
-                  <span>Register & Continue</span>
-                )}
+                {isLoading ? 'Creating Citizen Account...' : 'Register & Continue'}
               </button>
-
-              {/* Switch to Login link */}
-              <div className="pt-2 text-center text-xs text-slate-500">
-                Already registered?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('login');
-                    setApiError('');
-                  }}
-                  className="font-bold text-[#0d2a53] hover:underline"
-                >
-                  Sign in to your account
-                </button>
-              </div>
             </form>
           )}
 
-          {/* ================= GO TO HOME BUTTON (IN-CARD) ================= */}
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0d2a53] hover:text-blue-700 transition px-3 py-1.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200"
-            >
-              <span>🏠</span> Return to Public Home Page
-            </button>
-          </div>
-
-          {/* Quick Dev Switcher */}
+          {/* Quick Real API Test Login (Strictly Citizen & Worker) */}
           <div className="mt-4 pt-3 border-t border-slate-100">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              ⚡ Quick Test Login (Seeded Demo Accounts)
+              ⚡ Quick Test Login (Real Authenticated Tokens)
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setLoginForm({ role: 'citizen', identifier: '9820000001', password: 'Demo@12345' });
-                  login({
-                    token: 'jwt-citizen-demo',
-                    role: 'citizen',
-                    user: { id: 'u-citizen-1', name: 'Citizen Demo', mobile: '9820000001', role: 'citizen', ward: 1 }
-                  });
-                  navigate('/citizen');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200/60 flex items-center justify-center gap-1.5"
+                disabled={isLoading}
+                onClick={() => handleQuickDemoLogin('citizen', '9820000001', 'Demo@12345', '/citizen')}
+                className="py-2.5 px-3 text-xs font-bold rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200 flex items-center justify-center gap-1.5"
               >
-                <span>👤</span> Citizen (Ward 1)
+                <span>👤</span> Demo Citizen
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setLoginForm({ role: 'officer', identifier: '9800000001', password: 'Demo@12345' });
-                  login({
-                    token: 'jwt-officer-demo',
-                    role: 'officer',
-                    user: { id: 'u-officer-1', name: 'Rajesh Kumar (PWD)', mobile: '9800000001', role: 'officer', department: 'PWD' }
-                  });
-                  navigate('/officer');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition border border-purple-200/60 flex items-center justify-center gap-1.5"
+                disabled={isLoading}
+                onClick={() => handleQuickDemoLogin('worker', '9810010001', 'Demo@12345', '/worker')}
+                className="py-2.5 px-3 text-xs font-bold rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition border border-amber-200 flex items-center justify-center gap-1.5"
               >
-                <span>🏢</span> Officer (PWD)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginForm({ role: 'worker', identifier: '9810010001', password: 'Demo@12345' });
-                  login({
-                    token: 'jwt-worker-demo',
-                    role: 'worker',
-                    user: { id: 'u-worker-1', name: 'Field Worker PWD', mobile: '9810010001', role: 'worker', department: 'PWD', ward: 1 }
-                  });
-                  navigate('/worker');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition border border-amber-200/60 flex items-center justify-center gap-1.5"
-              >
-                <span>👷</span> Field Worker
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginForm({ role: 'admin', identifier: 'admin@janmitra.gov.in', password: 'Demo@12345' });
-                  login({
-                    token: 'jwt-admin-demo',
-                    role: 'admin',
-                    user: { id: 'u-admin-1', name: 'Central Admin', mobile: '9800000000', email: 'admin@janmitra.gov.in', role: 'admin' }
-                  });
-                  navigate('/admin');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition border border-rose-200/60 flex items-center justify-center gap-1.5"
-              >
-                <span>🏛️</span> Admin (HQ)
+                <span>👷</span> Demo Worker
               </button>
             </div>
           </div>
@@ -936,7 +771,6 @@ export const LoginPage = () => {
         </div>
       </div>
 
-      {/* Bottom Footer Note */}
       <footer className="mt-6 text-center text-xs text-slate-500">
         JANMITRA &bull; Developed by Team ResolveIT &bull; Nagpur Municipal Corporation
       </footer>

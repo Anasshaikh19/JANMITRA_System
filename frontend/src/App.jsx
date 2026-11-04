@@ -27,6 +27,7 @@ import AdminLayout from './layouts/AdminLayout';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import OfficialLoginPage from './pages/OfficialLoginPage';
 import LandingPage from './pages/LandingPage';
 import CitizenHome from './pages/citizen/Home';
 import MyComplaints from './pages/citizen/MyComplaints';
@@ -67,6 +68,9 @@ const RootRedirect = () => {
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, role } = useAuth();
   if (!isAuthenticated) {
+    if (allowedRoles && (allowedRoles.includes('admin') || allowedRoles.includes('officer') || allowedRoles.includes('dept_officer'))) {
+      return <Navigate to="/official/login" replace />;
+    }
     return <Navigate to="/login" replace />;
   }
   if (allowedRoles) {
@@ -116,6 +120,9 @@ export default function App() {
             {/* ================= PUBLIC AUTH ROUTES ================= */}
             <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
             <Route path="/register" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
+            <Route path="/official/login" element={<PublicAuthRoute><OfficialLoginPage /></PublicAuthRoute>} />
+            <Route path="/admin/login" element={<PublicAuthRoute><OfficialLoginPage /></PublicAuthRoute>} />
+            <Route path="/officer/login" element={<PublicAuthRoute><OfficialLoginPage /></PublicAuthRoute>} />
 
             {/* Default Root Redirect based on authentication status */}
             <Route path="/" element={<LandingPage />} />

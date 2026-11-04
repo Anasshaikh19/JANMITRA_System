@@ -1,7 +1,3 @@
-"""
-URL configuration for accounts app (JANMITRA - Nagpur Municipal Corporation).
-"""
-
 from django.urls import path
 
 from .views import (
@@ -27,6 +23,7 @@ urlpatterns = [
     path('refresh/', TokenRefreshView.as_view(), name='refresh'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('fcm-token/', FCMTokenUpdateView.as_view(), name='fcm_token'),
+    path('fcm-token', FCMTokenUpdateView.as_view(), name='fcm_token_noslash'),
     path('profile/', UserProfileView.as_view(), name='profile'),
     path('workers/', WorkerCreateView.as_view(), name='worker_create'),
     path('admin/workers/', AdminWorkersListCreateView.as_view(), name='admin_workers'),
@@ -38,4 +35,5 @@ urlpatterns = [
     path('auth/login/', LoginView.as_view(), name='auth_login'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='auth_refresh'),
     path('auth/fcm-token/', FCMTokenUpdateView.as_view(), name='auth_fcm_token'),
+    path('auth/fcm-token', FCMTokenUpdateView.as_view(), name='auth_fcm_token_noslash'),
 ]

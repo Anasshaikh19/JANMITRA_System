@@ -27,22 +27,14 @@ export const BroadcastBanner = ({ onDismiss } = {}) => {
       try {
         let resData = null;
 
-        // 1. Primary: Fetch from /api/v1/admin/settings/
+        // 1. Primary: Fetch from public announcements API
         try {
-          const res = await api.get('/api/v1/admin/settings/');
-          if (res?.data) {
-            resData = res.data;
+          const annRes = await api.get('/api/v1/announcements/');
+          if (annRes?.data) {
+            resData = annRes.data;
           }
-        } catch (settingsErr) {
-          // 2. Fallback: Fetch from announcements API
-          try {
-            const annRes = await api.get('/api/v1/announcements/');
-            if (annRes?.data) {
-              resData = annRes.data;
-            }
-          } catch (annErr) {
-            // Silently fall back to default advisory
-          }
+        } catch (annErr) {
+          // 2. Fallback: Silently ignore if offline
         }
 
         if (!isMounted) return;

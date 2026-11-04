@@ -376,6 +376,16 @@ export default function LandingPage() {
               </div>
             ) : (
               <div className="flex items-center gap-2.5">
+                {/* Official Staff Portal Link */}
+                <Link
+                  to="/official/login"
+                  className="hidden sm:inline-flex px-3.5 py-2.5 rounded-xl border border-purple-200 hover:border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-bold transition-all items-center gap-1.5 shadow-2xs"
+                  title="Official Department & Admin Portal"
+                >
+                  <span>🏛️</span>
+                  <span>Official Staff</span>
+                </Link>
+
                 {/* Login Button */}
                 <Link
                   to="/login"

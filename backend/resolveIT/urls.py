@@ -34,6 +34,22 @@ from complaints.views import (
 from dashboard.views import SystemSettingsView, PublicLandingStatsView
 
 
+def public_announcements_view(request):
+    return JsonResponse({
+        "broadcast_message": "Nagpur Municipal Corporation (NMC) monsoon drainage maintenance drive is actively underway across all wards. For civic emergencies, dial 1800-233-3764.",
+        "active": True,
+        "id": "nmc-broadcast-active",
+        "announcements": [
+            {
+                "id": 1,
+                "title": "Ward Sanitation & Drainage Drive",
+                "message": "NMC Field teams are conducting desilting and road surface patching across all 4 wards.",
+                "created_at": "2026-11-04T00:00:00Z"
+            }
+        ]
+    })
+
+
 def api_root_view(request):
     return JsonResponse({
         "project": "JANMITRA Civic Grievance System",
@@ -71,6 +87,8 @@ urlpatterns = [
 
     # Metadata master endpoints (public frontend dropdowns)
     path('api/v1/public/stats/', PublicLandingStatsView.as_view(), name='public_stats_direct'),
+    path('api/v1/announcements/', public_announcements_view, name='public_announcements'),
+    path('announcements/', public_announcements_view, name='public_announcements_root'),
     path('api/v1/meta/categories/', MetaCategoryListView.as_view(), name='meta_categories'),
     path('api/v1/meta/wards/', MetaWardListView.as_view(), name='meta_wards'),
 
