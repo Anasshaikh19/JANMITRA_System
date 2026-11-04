@@ -8,6 +8,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import OfficerSidebarDrawer from '../../components/OfficerSidebarDrawer';
 import ErrorMessage from '../../components/ErrorMessage';
+import { formatDeptName } from '../../utils/chartHelpers';
 import { updateComplaint, getStoredComplaints } from '../../utils/complaintStore';
 
 // Standardized municipal rejection reasons
@@ -539,7 +540,7 @@ const ValidationQueue = () => {
             <div className="text-slate-600 font-medium">
               <span>Logged as: </span>
               <strong className="text-slate-900 font-bold">{user?.name || 'Department Officer'}</strong>
-              <span className="text-slate-400 ml-1">({user?.department || 'PWD / Municipal'})</span>
+              <span className="text-slate-400 ml-1">({formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD')})</span>
             </div>
           </div>
         </div>

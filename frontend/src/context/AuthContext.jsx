@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { formatDeptName } from '../utils/chartHelpers';
 
 const AuthContext = createContext(null);
 
@@ -44,7 +45,16 @@ export const AuthProvider = ({ children }) => {
     if (!savedUser) return null;
     try {
       const parsed = JSON.parse(savedUser);
-      return (parsed && typeof parsed === 'object') ? parsed : null;
+      if (parsed && typeof parsed === 'object') {
+        const resolvedDept = formatDeptName(parsed.department_name || parsed.department || parsed.dept || parsed.dept_code);
+        return {
+          ...parsed,
+          department_name: resolvedDept,
+          department: resolvedDept,
+          dept: resolvedDept,
+        };
+      }
+      return null;
     } catch {
       return null;
     }
@@ -73,10 +83,13 @@ export const AuthProvider = ({ children }) => {
     }
 
     const userRole = normalizeRole(rawRole);
+    const resolvedDept = formatDeptName(userData?.department_name || userData?.department || userData?.dept || userData?.dept_code);
     const normalizedUser = {
       ...userData,
       role: userRole,
-      dept: userData?.dept || userData?.department || null,
+      department_name: resolvedDept,
+      department: resolvedDept,
+      dept: resolvedDept,
     };
 
     const tokenStr = typeof newToken === 'string' ? newToken : (newToken ? JSON.stringify(newToken) : null);

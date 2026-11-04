@@ -26,6 +26,7 @@ import ErrorMessage from '../../components/ErrorMessage';
 import OfficerSidebarDrawer from '../../components/OfficerSidebarDrawer';
 import { getStoredComplaints, updateComplaint } from '../../utils/complaintStore';
 import HighPriorityQueue from './HighPriorityQueue';
+import { formatDeptName } from '../../utils/chartHelpers';
 
 // Core palette matching the JANMITRA design system
 const COLORS = {
@@ -226,8 +227,9 @@ const Dashboard = () => {
   const [toastMessage, setToastMessage] = useState(null);
   const [pendingValidationCount, setPendingValidationCount] = useState(4);
 
-  const deptName =
-    user?.department || user?.dept || 'Public Works Department (PWD)';
+  const deptName = useMemo(() => {
+    return formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD');
+  }, [user]);
 
   // Toast feedback helper
   const showToast = (type, text) => {

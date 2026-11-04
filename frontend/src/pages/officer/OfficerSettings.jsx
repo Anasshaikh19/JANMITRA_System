@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import OfficerSidebarDrawer from '../../components/OfficerSidebarDrawer';
 import WardBadge from '../../components/WardBadge';
+import { formatDeptName } from '../../utils/chartHelpers';
 
 const OfficerSettings = () => {
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const officerName = user?.name || 'Er. S. M. Kulkarni';
-  const officerDept = user?.department || user?.dept || 'Public Works (PWD)';
+  const officerDept = formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD');
   const officerWard = user?.ward || 2;
 
   // Settings State

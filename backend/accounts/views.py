@@ -137,14 +137,38 @@ class LoginView(generics.GenericAPIView):
         user = validated_data['user']
 
         ward_val = user.ward.id if user.ward else None
-        dept_val = user.department.id if user.department else None
+
+        dept_name = None
+        dept_short_name = None
+        dept_id = None
+        if user.department:
+            dept_id = user.department.id
+            dept_short_name = getattr(user.department, 'short_name', None) or f"DEPT-{dept_id}"
+            if dept_short_name == 'PWD' or dept_id == 1:
+                dept_name = 'Public Works Department (PWD)'
+            elif dept_short_name == 'SWM' or dept_id == 2:
+                dept_name = 'Solid Waste Management (SWM)'
+            elif dept_short_name in ['PHE', 'WSD'] or dept_id == 3:
+                dept_name = 'Public Health Engineering (PHE)'
+            elif dept_short_name == 'ELEC' or dept_id == 4:
+                dept_name = 'Street Lighting & Electrical (ELEC)'
+            else:
+                dept_name = user.department.name
 
         user_data = {
             'id': user.id,
             'name': user.full_name,
+            'full_name': user.full_name,
             'role': user.role,
             'ward': ward_val,
-            'department': dept_val,
+            'ward_id': ward_val,
+            'ward_name': user.ward.name if user.ward else None,
+            'department': dept_name,
+            'department_name': dept_name,
+            'department_id': dept_id,
+            'dept': dept_name,
+            'dept_name': dept_name,
+            'dept_code': dept_short_name,
             'mobile': user.mobile,
             'email': user.email,
         }
@@ -154,6 +178,7 @@ class LoginView(generics.GenericAPIView):
                 'message': 'Login successful.',
                 'access': validated_data['access'],
                 'refresh': validated_data['refresh'],
+                'role': user.role,
                 'user': user_data,
             },
             status=status.HTTP_200_OK

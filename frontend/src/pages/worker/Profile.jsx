@@ -22,7 +22,7 @@ const Profile = () => {
   const workerName = user?.name || 'Suresh Patil';
   const designation = user?.designation || 'Field Inspector';
   const employeeId = user?.employee_id || user?.id || 'EMP-W-204';
-  const department = user?.dept || user?.department || 'PWD (Roads & Infrastructure)';
+  const department = formatDeptName(user?.department_name || user?.dept || user?.department || 'PWD');
   const ward = user?.ward || 2;
   const email = user?.email || 'suresh.patil@janmitra.gov.in';
   const mobile = user?.mobile || '+91 98765 43210';

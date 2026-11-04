@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import WardBadge from './WardBadge';
+import { formatDeptName } from '../utils/chartHelpers';
 
 /**
  * OfficerSidebarDrawer component:
@@ -29,7 +30,7 @@ const OfficerSidebarDrawer = ({
   const navigate = useNavigate();
 
   const officerName = user?.name || 'Department Officer';
-  const officerDept = user?.department || user?.dept || 'Public Works (PWD)';
+  const officerDept = formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD');
   const currentPath = location.pathname;
 
   const handleNavClick = (path) => {

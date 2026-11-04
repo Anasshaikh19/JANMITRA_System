@@ -45,23 +45,50 @@ export const formatPriorityColour = (level) => {
   }
 };
 
-// 3. Full department name formatter
+// 3. Full department name formatter (handles IDs 1, 2, 3, 4, codes PWD/SWM/PHE/ELEC, and custom strings)
 export const formatDeptName = (id) => {
-  if (!id) return 'General Administration';
-  const norm = String(id).trim().toUpperCase();
+  if (!id && id !== 0) return 'Public Works Department (PWD)';
+  const str = String(id).trim();
+  const norm = str.toUpperCase();
 
   const deptMap = {
+    '1': 'Public Works Department (PWD)',
+    '2': 'Solid Waste Management (SWM)',
+    '3': 'Public Health Engineering (PHE)',
+    '4': 'Street Lighting & Electrical (ELEC)',
     PWD: 'Public Works Department (PWD)',
     SWM: 'Solid Waste Management (SWM)',
-    WSD: 'Water Supply & Drainage (WSD)',
+    PHE: 'Public Health Engineering (PHE)',
+    WSD: 'Public Health Engineering (PHE)',
     ELEC: 'Street Lighting & Electrical (ELEC)',
     ROADS: 'Public Works Department (PWD)',
     GARBAGE: 'Solid Waste Management (SWM)',
-    WATER: 'Water Supply & Drainage (WSD)',
+    WATER: 'Public Health Engineering (PHE)',
     LIGHTING: 'Street Lighting & Electrical (ELEC)',
   };
 
-  return deptMap[norm] || String(id);
+  if (deptMap[norm]) return deptMap[norm];
+  if (deptMap[str]) return deptMap[str];
+
+  if (norm.includes('PUBLIC WORKS') || norm.includes('PWD') || norm.includes('ROAD')) {
+    return 'Public Works Department (PWD)';
+  }
+  if (norm.includes('SOLID') || norm.includes('WASTE') || norm.includes('SWM') || norm.includes('GARBAGE')) {
+    return 'Solid Waste Management (SWM)';
+  }
+  if (norm.includes('HEALTH') || norm.includes('PHE') || norm.includes('WATER') || norm.includes('DRAIN') || norm.includes('WSD')) {
+    return 'Public Health Engineering (PHE)';
+  }
+  if (norm.includes('LIGHT') || norm.includes('ELECTRICAL') || norm.includes('ELEC') || norm.includes('POWER')) {
+    return 'Street Lighting & Electrical (ELEC)';
+  }
+
+  // If already a long descriptive string, return it
+  if (str.length > 5 && !/^\d+$/.test(str)) {
+    return str;
+  }
+
+  return 'Public Works Department (PWD)';
 };
 
 // 4. Ward name formatter ('Ward X')

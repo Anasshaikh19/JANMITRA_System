@@ -10,10 +10,14 @@ import OfficerSidebarDrawer from '../../components/OfficerSidebarDrawer';
 
 // 4 Primary Municipal Departments
 const DEPT_INFO = {
-  PWD: { name: 'Public Works (PWD)', icon: '🛣️', color: 'text-primary', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  PWD: { name: 'Public Works Department (PWD)', icon: '🛣️', color: 'text-primary', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
   SWM: { name: 'Solid Waste Management (SWM)', icon: '🗑️', color: 'text-success', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  PHE: { name: 'Water Works & Drainage (PHE)', icon: '💧', color: 'text-cyan-600', badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  ELEC: { name: 'Street Lighting & Electrical', icon: '💡', color: 'text-warning', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  PHE: { name: 'Public Health Engineering (PHE)', icon: '💧', color: 'text-cyan-600', badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  ELEC: { name: 'Street Lighting & Electrical (ELEC)', icon: '💡', color: 'text-warning', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  '1': { name: 'Public Works Department (PWD)', icon: '🛣️', color: 'text-primary', badgeBg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  '2': { name: 'Solid Waste Management (SWM)', icon: '🗑️', color: 'text-success', badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  '3': { name: 'Public Health Engineering (PHE)', icon: '💧', color: 'text-cyan-600', badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  '4': { name: 'Street Lighting & Electrical (ELEC)', icon: '💡', color: 'text-warning', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200' },
 };
 
 // Initial roster of departmental field personnel across 4 wards
@@ -406,11 +410,15 @@ const WorkerRoster = ({ isEmbedded = false }) => {
 
   // Resolve officer's department (PWD by default or matched from auth user)
   const officerDeptCode = useMemo(() => {
-    const rawDept = user?.department || user?.dept || 'PWD';
+    if (user?.dept_code) {
+      const code = String(user.dept_code).toUpperCase();
+      if (['PWD', 'SWM', 'PHE', 'ELEC'].includes(code)) return code;
+    }
+    const rawDept = user?.department_name || user?.department || user?.dept || 'PWD';
     const normalized = String(rawDept).toUpperCase();
-    if (normalized.includes('SOLID') || normalized.includes('SWM')) return 'SWM';
-    if (normalized.includes('WATER') || normalized.includes('DRAIN') || normalized.includes('PHE') || normalized.includes('WSD')) return 'PHE';
-    if (normalized.includes('LIGHT') || normalized.includes('ELEC')) return 'ELEC';
+    if (normalized === '2' || normalized.includes('SOLID') || normalized.includes('SWM') || normalized.includes('GARBAGE')) return 'SWM';
+    if (normalized === '3' || normalized.includes('WATER') || normalized.includes('DRAIN') || normalized.includes('PHE') || normalized.includes('WSD') || normalized.includes('HEALTH')) return 'PHE';
+    if (normalized === '4' || normalized.includes('LIGHT') || normalized.includes('ELECTR') || normalized.includes('ELEC')) return 'ELEC';
     return 'PWD';
   }, [user]);
 

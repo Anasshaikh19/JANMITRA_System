@@ -9,9 +9,11 @@
  * ==============================================================================
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Layout from './Layout';
+import { useAuth } from '../context/AuthContext';
+import { formatDeptName } from '../utils/chartHelpers';
 
 const OFFICER_NAV_ITEMS = [
   {
@@ -74,11 +76,37 @@ export const OfficerLayout = ({ children }) => {
     navigate = (path) => { window.location.href = path; };
   }
 
+  const { user } = useAuth();
+  const deptFullName = useMemo(() => {
+    return formatDeptName(user?.department_name || user?.department || user?.dept || 'PWD');
+  }, [user]);
+
   // Sidebar content (used both in desktop sidebar and mobile drawer)
   const renderNavLinks = (onItemClick) => (
     <div className="p-4 space-y-1.5">
+      {/* Department Name Card */}
+      <div className="p-3 bg-blue-50/90 rounded-2xl border border-blue-200/80 mb-3 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">
+            {deptFullName.includes('PWD') ? '🛣️' : deptFullName.includes('SWM') ? '🗑️' : deptFullName.includes('PHE') ? '💧' : '💡'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <span className="text-[10px] font-black uppercase text-blue-700 tracking-wider block">
+              Assigned Department
+            </span>
+            <h3 className="text-xs font-black text-slate-900 truncate" title={deptFullName}>
+              {deptFullName}
+            </h3>
+          </div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px] text-slate-600 font-medium">
+          <span>Officer: {user?.name ? user.name.split(' ')[0] : 'Officer'}</span>
+          <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">On Duty</span>
+        </div>
+      </div>
+
       <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
-        Department Officer Portal
+        Department Portal Actions
       </div>
       {OFFICER_NAV_ITEMS.map((item) => {
         const isActive =
@@ -137,8 +165,8 @@ export const OfficerLayout = ({ children }) => {
           <span>Officer Menu</span>
         </button>
 
-        <span className="text-xs font-semibold text-slate-500">
-          Nagpur Municipal Corporation
+        <span className="text-xs font-bold text-blue-900 truncate max-w-[200px]">
+          {deptFullName}
         </span>
       </div>
 
