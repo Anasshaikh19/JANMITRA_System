@@ -1079,30 +1079,42 @@ export const CitizenSubmit = () => {
 
     // 1. Construct Multipart FormData payload
     const formData = new FormData();
-    formData.append('category', activeCategoryObj?.title || selectedCategory);
+    const wardNum = parseInt(String(selectedWard || '1').replace(/\D/g, ''), 10) || 1;
+    const categoryId = activeCategoryObj?.deptId || (
+      selectedCategory === 'PWD' ? 1 : (selectedCategory === 'SWM' ? 2 : (selectedCategory === 'PHE' ? 3 : 4))
+    );
+
+    formData.append('category', categoryId);
+    formData.append('category_id', categoryId);
     formData.append('category_code', selectedCategory);
-    formData.append('category_id', activeCategoryObj?.deptId || 1);
     formData.append('department', activeCategoryObj?.department || 'PWD');
-    formData.append('ward', selectedWard);
-    formData.append('ward_number', selectedWard.replace(/\D/g, '') || '4');
+    formData.append('ward', wardNum);
+    formData.append('ward_number', wardNum);
+    formData.append('title', (activeCategoryObj?.title ? `${activeCategoryObj.title} Issue` : description.slice(0, 50)).trim());
     formData.append('description', description.trim());
     if (landmark.trim()) {
       formData.append('landmark', landmark.trim());
     }
-    formData.append('lat', location.lat);
-    formData.append('lng', location.lng);
-    formData.append('latitude', location.lat);
-    formData.append('longitude', location.lng);
+    const latVal = location.lat || NAGPUR_CENTER.lat;
+    const lngVal = location.lng || NAGPUR_CENTER.lng;
+    formData.append('location_lat', latVal);
+    formData.append('location_lng', lngVal);
+    formData.append('lat', latVal);
+    formData.append('lng', lngVal);
+    formData.append('latitude', latVal);
+    formData.append('longitude', lngVal);
     formData.append('address', location.address || NAGPUR_CENTER.defaultAddress);
     if (location.accuracy) {
       formData.append('accuracy', location.accuracy);
     }
     formData.append('is_gps_detected', location.isGpsDetected ? 'true' : 'false');
 
-    // Attach compressed photo files
+    // Attach compressed photo files under both 'images' and 'photos'
     photos.forEach((photo, idx) => {
-      if (photo.compressedBlob) {
-        formData.append('photos', photo.compressedBlob, photo.name || `civic_issue_${idx + 1}.jpg`);
+      const fileOrBlob = photo.compressedBlob || photo.file;
+      if (fileOrBlob) {
+        formData.append('images', fileOrBlob, photo.name || `civic_issue_${idx + 1}.jpg`);
+        formData.append('photos', fileOrBlob, photo.name || `civic_issue_${idx + 1}.jpg`);
       }
     });
 
@@ -1181,8 +1193,16 @@ export const CitizenSubmit = () => {
 
     } catch (err) {
       console.error('[Submit] API submission failed:', err);
-      const errMsg = err.response?.data?.detail || err.response?.data?.message || err.message;
-      setSubmitError(errMsg || 'Failed to submit complaint. Please check your network and try again.');
+      let errMsg = err.response?.data?.detail || err.response?.data?.message;
+      if (!errMsg && err.response?.data && typeof err.response.data === 'object') {
+        const entries = Object.entries(err.response.data);
+        if (entries.length > 0) {
+          const [key, val] = entries[0];
+          const valStr = Array.isArray(val) ? val.join(', ') : String(val);
+          errMsg = `${key}: ${valStr}`;
+        }
+      }
+      setSubmitError(errMsg || err.message || 'Failed to submit complaint. Please check your network and try again.');
       setIsSubmitting(false);
     }
   };
