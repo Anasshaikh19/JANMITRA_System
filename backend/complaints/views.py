@@ -303,17 +303,31 @@ class ComplaintViewSet(viewsets.ModelViewSet):
             complaint = serializer.save()
 
             def _dispatch_post_commit_tasks():
-                # After successful database commit, dispatch Celery task for AI processing
+                # 1. Run AI pipeline immediately in an asynchronous thread so
+                # complaints transition from SUBMITTED -> Validated and route to Department
+                # even if Celery worker or Redis is not running locally.
+                def _run_ai_async():
+                    try:
+                        from complaints.tasks import process_complaint_ai
+                        process_complaint_ai(str(complaint.id))
+                    except Exception as e:
+                        logger.warning(f"In-process AI execution note: {e}")
+
+                import threading
+                ai_thread = threading.Thread(target=_run_ai_async, daemon=True)
+                ai_thread.start()
+
+                # 2. Also queue to Celery broker if available
                 try:
                     process_complaint_ai.apply_async(args=[str(complaint.id)], retry=False)
                 except Exception as e:
-                    logger.warning(f"Could not dispatch process_complaint_ai for complaint {complaint.id}: {e}")
+                    logger.debug(f"Celery dispatch note: {e}")
 
-                # Notification task dispatch
+                # 3. Notification task dispatch
                 try:
                     notify_officer_on_new_complaint.apply_async(args=[str(complaint.id)], retry=False)
                 except Exception as e:
-                    logger.warning(f"Could not dispatch notify_officer_on_new_complaint for {complaint.id}: {e}")
+                    logger.debug(f"Notification dispatch note: {e}")
 
             transaction.on_commit(_dispatch_post_commit_tasks)
 

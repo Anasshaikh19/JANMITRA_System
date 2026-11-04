@@ -197,25 +197,12 @@ export default function CitizenProfile() {
         }).length;
         const pendingCount = Math.max(0, totalCount - resolvedCount);
 
-        if (profileData?.stats) {
-          setStats({
-            total: profileData.stats.total ?? totalCount,
-            resolved: profileData.stats.resolved ?? resolvedCount,
-            pending: profileData.stats.pending ?? pendingCount
-          });
-        } else if (summaryData && typeof summaryData.total === 'number') {
-          setStats({
-            total: summaryData.total,
-            resolved: summaryData.resolved ?? summaryData.resolved_count ?? resolvedCount,
-            pending: (summaryData.open_count ?? summaryData.open ?? 0) + (summaryData.in_progress_count ?? summaryData.in_progress ?? 0)
-          });
-        } else {
-          setStats({
-            total: totalCount,
-            resolved: resolvedCount,
-            pending: pendingCount
-          });
-        }
+        // Citizen stats strictly reflect this citizen's own complaints
+        setStats({
+          total: totalCount,
+          resolved: resolvedCount,
+          pending: pendingCount
+        });
 
         // 4. Calculate ratings & reviews
         if (profileData?.reviews && Array.isArray(profileData.reviews) && profileData.reviews.length > 0) {

@@ -261,9 +261,15 @@ def process_complaint_ai(self, complaint_id):
             if not is_fraud and new_status == 'Validated':
                 def dispatch_routing():
                     try:
-                        route_complaint_task.delay(str(complaint.id))
+                        from .routing import route_complaint as execute_routing
+                        execute_routing(str(complaint.id))
                     except Exception as exc:
-                        logger.warning(f"Failed to dispatch route_complaint_task for {complaint.id}: {exc}")
+                        logger.warning(f"Direct routing execution error for {complaint.id}: {exc}")
+
+                    try:
+                        route_complaint_task.apply_async(args=[str(complaint.id)], retry=False)
+                    except Exception as exc:
+                        logger.debug(f"Celery route dispatch note: {exc}")
 
                 transaction.on_commit(dispatch_routing)
 

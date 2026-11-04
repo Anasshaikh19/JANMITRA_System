@@ -19,6 +19,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { CategoryBadge, PriorityBadge, StatusBadge, WardBadge } from '../../components/Badges';
+import { getStoredComplaints } from '../../utils/complaintStore';
 
 // Canonical 6-step lifecycle defined in JANMITRA PRD/SRS
 const TIMELINE_STEPS = [
@@ -47,6 +48,18 @@ export const REJECTION_REASONS = [
  * 5-Star interactive rating selector with star hover micro-animation,
  * dynamic score descriptions, and touch/click bounce effects.
  */
+
+export const resolveMediaUrl = (img) => {
+  if (!img) return '';
+  const url = typeof img === 'string' ? img : (img.image || img.file || img.url || '');
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `http://127.0.0.1:8000${cleanPath}`;
+};
+
 export const RatingSelector = ({ rating = 5, hoverRating = 0, onRatingChange, onHoverChange }) => {
   const ratingLabels = {
     1: '★☆☆☆☆ Poor / Defect still persists',
@@ -508,6 +521,17 @@ export const ComplaintDetail = () => {
       setComplaint(response.data);
     } catch (err) {
       console.error('[ComplaintDetail] Error loading complaint:', err);
+      try {
+        const stored = getStoredComplaints();
+        const localMatch = stored.find(c => String(c.id) === String(id) || String(c.tracking_id) === String(id));
+        if (localMatch) {
+          setComplaint(localMatch);
+          setIsLoading(false);
+          return;
+        }
+      } catch (storeErr) {
+        console.warn('[ComplaintDetail] Fallback error:', storeErr);
+      }
       setError('Could not load complaint details. It may not exist or network failed.');
     } finally {
       setIsLoading(false);
@@ -671,16 +695,16 @@ export const ComplaintDetail = () => {
   // Unified images array with 'Original Report' vs 'Proof of Work' classification
   const galleryImages = [
     ...complaintPhotos.map((item, idx) => {
-      const url = typeof item === 'string' ? item : (item.image || item.file || item.url);
+      const url = resolveMediaUrl(item);
       return {
         url,
         type: 'Original Report',
         title: `Original Report Photo #${idx + 1}`,
-        description: complaint.title || complaint.description || 'Uploaded by citizen during reporting'
+        description: complaint.description || complaint.title || 'Uploaded by citizen during reporting'
       };
     }),
     ...proofPhotos.map((item, idx) => {
-      const url = typeof item === 'string' ? item : (item.image || item.file || item.url);
+      const url = resolveMediaUrl(item);
       return {
         url,
         type: 'Proof of Work',
@@ -829,7 +853,7 @@ export const ComplaintDetail = () => {
             Issue Description
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-            {complaint.description || 'No description provided by citizen.'}
+            {complaint.description || complaint.title || complaint.address || 'No description provided by citizen.'}
           </p>
 
           {/* Citizen Photos Gallery */}
@@ -845,7 +869,7 @@ export const ComplaintDetail = () => {
               </div>
               <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
                 {complaintPhotos.map((imgUrl, index) => {
-                  const url = typeof imgUrl === 'string' ? imgUrl : (imgUrl.image || imgUrl.file);
+                  const url = resolveMediaUrl(imgUrl);
                   return (
                     <div
                       key={index}
