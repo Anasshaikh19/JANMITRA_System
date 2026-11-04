@@ -598,6 +598,16 @@ const Dashboard = () => {
             </div>
 
             <div className="flex items-center gap-2.5">
+              {/* Quick Action: 'Add Worker' */}
+              <Link
+                to="/officer/add-worker"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-extrabold shadow-sm transition flex items-center gap-2 hover:scale-[1.02] active:scale-95"
+                title="Register and onboard a new field worker for this department"
+              >
+                <span className="text-sm">➕</span>
+                <span>Add Worker</span>
+              </Link>
+
               {/* Quick Action: 'Dispatch Workers' */}
               <button
                 type="button"
@@ -1155,6 +1165,14 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Link
+                    to="/officer/add-worker"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:scale-[1.02]"
+                    title="Register a new field worker for this department"
+                  >
+                    <span>➕</span>
+                    <span>Add Worker</span>
+                  </Link>
                   <Link
                     to="/officer/roster"
                     className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5"

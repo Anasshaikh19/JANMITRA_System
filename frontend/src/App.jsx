@@ -37,6 +37,10 @@ import CitizenSubmit from './pages/citizen/Submit';
 import WorkerManagement from './pages/admin/WorkerManagement';
 import CrossDeptDashboard from './pages/admin/CrossDeptDashboard';
 import OfficerDashboard from './pages/officer/Dashboard';
+import AddWorkerPage from './pages/officer/AddWorkerPage';
+import WorkerTaskList from './pages/worker/TaskList';
+import WorkerCompletedTasks from './pages/worker/CompletedTasks';
+import WorkerProfile from './pages/worker/Profile';
 
 // Helper component for Root Route
 const RootRedirect = () => {
@@ -184,13 +188,7 @@ export default function App() {
               path="/worker"
               element={
                 <ProtectedRoute allowedRoles={['worker', 'admin']}>
-                  <WorkerLayout>
-                    <PlaceholderCard
-                      title="Assigned Tasks"
-                      desc="List of pending civic repairs with GPS map navigation."
-                      role="Worker"
-                    />
-                  </WorkerLayout>
+                  <WorkerTaskList />
                 </ProtectedRoute>
               }
             />
@@ -198,13 +196,7 @@ export default function App() {
               path="/worker/completed"
               element={
                 <ProtectedRoute allowedRoles={['worker', 'admin']}>
-                  <WorkerLayout>
-                    <PlaceholderCard
-                      title="Completed Work"
-                      desc="Resolved civic tasks with proof-of-work photos."
-                      role="Worker"
-                    />
-                  </WorkerLayout>
+                  <WorkerCompletedTasks />
                 </ProtectedRoute>
               }
             />
@@ -212,13 +204,7 @@ export default function App() {
               path="/worker/profile"
               element={
                 <ProtectedRoute allowedRoles={['worker', 'admin']}>
-                  <WorkerLayout>
-                    <PlaceholderCard
-                      title="Worker Profile"
-                      desc="Department and Ward assignment details."
-                      role="Worker"
-                    />
-                  </WorkerLayout>
+                  <WorkerProfile />
                 </ProtectedRoute>
               }
             />
@@ -254,6 +240,67 @@ export default function App() {
                 <ProtectedRoute allowedRoles={['officer', 'admin']}>
                   <OfficerLayout>
                     <WorkerManagement />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer/add-worker"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <AddWorkerPage />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer/workers/add"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <AddWorkerPage />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            {/* Department-specific route aliases (PWD, SWM, PHE, ELEC) */}
+            <Route
+              path="/officer/pwd"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <OfficerDashboard />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer/swm"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <OfficerDashboard />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer/phe"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <OfficerDashboard />
+                  </OfficerLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer/elec"
+              element={
+                <ProtectedRoute allowedRoles={['officer', 'admin']}>
+                  <OfficerLayout>
+                    <OfficerDashboard />
                   </OfficerLayout>
                 </ProtectedRoute>
               }

@@ -63,8 +63,9 @@ export const LoginPage = () => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Login Form State (Supports Mobile Number OR Email Address)
+  // Login Form State (Supports Role Dropdown + Mobile/Email Identifier)
   const [loginForm, setLoginForm] = useState({
+    role: 'citizen',
     identifier: '',
     password: ''
   });
@@ -230,9 +231,17 @@ export const LoginPage = () => {
       // Store in AuthContext (saves tokens and triggers FCM permission)
       await login(data);
 
-      // Determine user role and redirect
-      const userRole = data.role || data.user?.role || 'citizen';
-      handleRoleRedirect(userRole);
+      // Determine user role and redirect to selected/authorized portal
+      const returnedRole = (data.role || data.user?.role || loginForm.role || 'citizen').toLowerCase().trim();
+      if (loginForm.role === 'worker' && (returnedRole === 'worker' || returnedRole === 'admin')) {
+        navigate('/worker');
+      } else if (loginForm.role === 'citizen' && (returnedRole === 'citizen' || returnedRole === 'admin')) {
+        navigate('/citizen');
+      } else if (loginForm.role === 'officer' && (returnedRole === 'officer' || returnedRole === 'dept_officer' || returnedRole === 'admin')) {
+        navigate('/officer');
+      } else {
+        handleRoleRedirect(returnedRole);
+      }
     } catch (err) {
       console.error('[Login Error]', err);
       setApiError('Unable to connect to backend server at ' + API_BASE_URL + '. Please ensure the Django backend is running.');
@@ -435,6 +444,32 @@ export const LoginPage = () => {
           {/* ================= 1. LOGIN FORM ================= */}
           {activeTab === 'login' && (
             <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+              {/* Role Selector: Citizen vs Field Worker */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  I am logging in as <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={loginForm.role}
+                    onChange={(e) => setLoginForm((prev) => ({ ...prev, role: e.target.value }))}
+                    className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white text-slate-900 outline-none transition duration-150 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100 font-semibold"
+                  >
+                    <option value="citizen">👤 Citizen (Grievance Portal)</option>
+                    <option value="worker">👷 Field Worker (Municipal Operations)</option>
+                    <option value="officer">🏢 Department Officer (PWD / SWM / PHE / ELEC)</option>
+                    <option value="admin">🏛️ Super Administrator (HQ)</option>
+                  </select>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {loginForm.role === 'worker'
+                    ? 'Field workers can sign in using their registered mobile number or email.'
+                    : loginForm.role === 'citizen'
+                    ? 'Citizens of Nagpur reporting local civic issues.'
+                    : 'Municipal administrative and department personnel.'}
+                </p>
+              </div>
+
               {/* Phone or Email Identifier */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -838,7 +873,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ identifier: '9820000001', password: 'Demo@12345' });
+                  setLoginForm({ role: 'citizen', identifier: '9820000001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-citizen-demo',
                     role: 'citizen',
@@ -853,7 +888,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ identifier: '9800000001', password: 'Demo@12345' });
+                  setLoginForm({ role: 'officer', identifier: '9800000001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-officer-demo',
                     role: 'officer',
@@ -868,7 +903,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ identifier: '9810010001', password: 'Demo@12345' });
+                  setLoginForm({ role: 'worker', identifier: '9810010001', password: 'Demo@12345' });
                   login({
                     token: 'jwt-worker-demo',
                     role: 'worker',
@@ -883,7 +918,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setLoginForm({ identifier: 'admin@janmitra.gov.in', password: 'Demo@12345' });
+                  setLoginForm({ role: 'admin', identifier: 'admin@janmitra.gov.in', password: 'Demo@12345' });
                   login({
                     token: 'jwt-admin-demo',
                     role: 'admin',

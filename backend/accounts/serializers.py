@@ -406,8 +406,10 @@ class AdminWorkerCreateSerializer(serializers.Serializer):
     )
     employee_id = serializers.CharField(
         max_length=50,
-        required=True,
-        help_text='Unique Municipal Employee ID'
+        required=False,
+        allow_blank=True,
+        default='',
+        help_text='Unique Municipal Employee ID (auto-generated if omitted)'
     )
     ward = serializers.IntegerField(
         required=False,
@@ -486,12 +488,20 @@ class AdminWorkerCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({'mobile': 'A user with this mobile number already exists.'})
         attrs['mobile'] = mobile
 
-        # 3. Employee ID validation (must be unique and non-empty)
+        # 3. Employee ID validation (auto-generate if omitted)
         employee_id = str(attrs.get('employee_id', '')).strip()
         if not employee_id:
-            raise serializers.ValidationError({'employee_id': 'Employee ID is required.'})
-        if User.objects.filter(employee_id=employee_id).exists():
-            raise serializers.ValidationError({'employee_id': 'A user with this employee ID already exists.'})
+            import random
+            suffix = mobile[-4:] if len(mobile) >= 4 else str(random.randint(1000, 9999))
+            employee_id = f"EMP-W-{suffix}"
+            counter = 1
+            base_id = employee_id
+            while User.objects.filter(employee_id=employee_id).exists():
+                employee_id = f"{base_id}-{counter}"
+                counter += 1
+        else:
+            if User.objects.filter(employee_id=employee_id).exists():
+                raise serializers.ValidationError({'employee_id': 'A user with this employee ID already exists.'})
         attrs['employee_id'] = employee_id
 
         # 4. Ward validation (1-4) against actual database record
