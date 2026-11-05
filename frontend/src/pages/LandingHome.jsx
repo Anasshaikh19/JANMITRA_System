@@ -609,7 +609,7 @@ export default function LandingHome() {
             <a href="#statistics" className="hover:text-[#0d2a53] transition">
               Live Statistics
             </a>
-            <a href="#powerbi-heatmap" className="hover:text-[#0d2a53] transition">
+            <a href="#civic-heatmap" className="hover:text-[#0d2a53] transition">
               Interactive Heatmap
             </a>
             <a href="#resolutions" className="hover:text-[#0d2a53] transition">
@@ -710,17 +710,17 @@ export default function LandingHome() {
 
         <div className="relative max-w-5xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-blue-200">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Smart Civic Grievance Redressal for Janmitra City</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Janmitra Municipal Corporation • Official Civic Redressal</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight max-w-4xl mx-auto">
-            Transparent Civic Grievance & AI Redressal Platform
+            Crowdsourced Civic Issue <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-200 to-amber-400">Reporting &amp; Resolution</span>
           </h1>
 
           <p className="text-sm sm:text-base text-blue-100/90 max-w-2xl mx-auto leading-relaxed">
-            Report road potholes, illegal garbage dumps, faulty streetlights, and drainage blocks.
-            Auto-validated by computer vision and redressed by JMC field staff with photographic proof.
+            Empowering citizens to report road potholes, waste dumps, broken streetlights, and drainage issues.
+            Auto-verified by computer vision AI and resolved by municipal field staff with photographic proof.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -733,11 +733,11 @@ export default function LandingHome() {
             </button>
 
             <a
-              href="#powerbi-heatmap"
+              href="#civic-heatmap"
               className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/20 backdrop-blur-sm flex items-center gap-2 transition"
             >
               <Flame className="w-4 h-4 text-amber-400" />
-              <span>Explore Interactive Heatmap</span>
+              <span>City Heatmap Analytics</span>
             </a>
           </div>
 
@@ -938,11 +938,11 @@ export default function LandingHome() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. POWER BI STYLE INTERACTIVE GEO-HEATMAP                                 */}
+      {/* 5. MUNICIPAL GEO-INTELLIGENCE & REAL-TIME HEATMAP                          */}
       {/* ========================================================================= */}
-      <section id="powerbi-heatmap" className="py-14 bg-slate-900 text-white border-b border-slate-800">
+      <section id="civic-heatmap" className="py-14 bg-slate-900 text-white border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-          {/* PowerBI Top Navigation Ribbon */}
+          {/* Heatmap Top Navigation Ribbon */}
           <div className="bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-700 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-extrabold shadow-md">
@@ -951,7 +951,7 @@ export default function LandingHome() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
-                    Power BI Civic Intelligence — Geo-Density Heatmap
+                    Municipal Geo-Intelligence &amp; Heatmap Analytics
                   </h2>
                   <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-md">
                     LIVE TELEMETRY
