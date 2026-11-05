@@ -146,10 +146,7 @@ export const Layout = ({
 
             {/* Logout Button */}
             <button
-              onClick={() => {
-                logout();
-                navigate('/login');
-              }}
+              onClick={() => logout(currentRole === 'worker' ? '/login?role=worker' : undefined)}
               className="text-xs font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
               title="Sign Out"
             >

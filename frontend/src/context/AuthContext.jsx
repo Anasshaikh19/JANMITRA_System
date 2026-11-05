@@ -96,8 +96,10 @@ export const AuthProvider = ({ children }) => {
 
   /**
    * Logout user and clear all stored credentials
+   * Smart redirect: Sends workers back to Worker Sign In, citizens to Citizen Sign In
    */
-  const logout = useCallback(() => {
+  const logout = useCallback((redirectOverride) => {
+    const currentRole = role || localStorage.getItem('user_role');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_role');
@@ -106,8 +108,22 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setRole(null);
     setUser(null);
-    window.location.href = '/login';
-  }, []);
+
+    if (typeof redirectOverride === 'string' && redirectOverride) {
+      window.location.href = redirectOverride;
+      return;
+    }
+
+    if (currentRole === 'worker') {
+      window.location.href = '/login?role=worker';
+    } else if (currentRole === 'officer' || currentRole === 'dept_officer') {
+      window.location.href = '/login?role=officer';
+    } else if (currentRole === 'admin') {
+      window.location.href = '/login?role=admin';
+    } else {
+      window.location.href = '/login?role=citizen';
+    }
+  }, [role]);
 
   const value = {
     token,

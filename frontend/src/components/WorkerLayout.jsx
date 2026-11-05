@@ -66,8 +66,7 @@ const WorkerLayout = ({
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    logout('/login?role=worker');
   };
 
   const handleTabClick = (tabKey) => {
