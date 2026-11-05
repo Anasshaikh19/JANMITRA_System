@@ -77,7 +77,7 @@ export const Layout = ({
               onClick={() => navigate(`/${currentRole === 'dept_officer' ? 'officer' : currentRole}`)}
               className="flex items-center gap-2.5 text-left focus:outline-none"
             >
-              <img src="/janmitra-emblem.svg" alt="Janmitra Logo" className="w-8 h-8 object-contain drop-shadow" />
+              <img src="/janmitra-logo-opt2-gold.jpg" alt="Janmitra Logo" className="w-8 h-8 rounded-full object-cover border border-amber-400 shadow-sm" />
               <div>
                 <span className="font-black text-lg tracking-wider text-white uppercase block leading-none">
                   JANMITRA

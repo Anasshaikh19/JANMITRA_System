@@ -580,10 +580,10 @@ export default function LandingHome() {
       {/* ========================================================================= */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Logo & Emblem - Official Indian Flag + Civic Issue Seal */}
+          {/* Logo & Emblem - Official Municipal Gold Crest (Option 2) */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-white p-1 shadow-md shadow-blue-900/10 border border-slate-200 group-hover:scale-105 transition transform flex items-center justify-center">
-              <img src="/janmitra-emblem.svg" alt="Janmitra Municipal Corporation" className="w-full h-full object-contain" />
+            <div className="w-13 h-13 rounded-full bg-slate-900 p-0.5 shadow-md shadow-blue-900/20 border-2 border-amber-400 group-hover:scale-105 transition transform flex items-center justify-center overflow-hidden">
+              <img src="/janmitra-logo-opt2-gold.jpg" alt="Janmitra Municipal Corporation" className="w-12 h-12 rounded-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -1532,8 +1532,8 @@ export default function LandingHome() {
             {/* Col 1: About JMC Janmitra */}
             <div className="space-y-3 md:col-span-1">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-white/10 p-1 border border-white/20 flex items-center justify-center">
-                  <img src="/janmitra-emblem.svg" alt="Janmitra Logo" className="w-full h-full object-contain" />
+                <div className="w-11 h-11 rounded-full p-0.5 border-2 border-amber-400 flex items-center justify-center overflow-hidden bg-slate-900 shadow">
+                  <img src="/janmitra-logo-opt2-gold.jpg" alt="Janmitra Logo" className="w-full h-full object-cover rounded-full" />
                 </div>
                 <span className="text-lg font-black tracking-tight text-white">JANMITRA</span>
               </div>
