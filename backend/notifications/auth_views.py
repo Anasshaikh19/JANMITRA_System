@@ -238,7 +238,21 @@ class LoginView(APIView):
             role = 'citizen'
             name = user.first_name or f"Citizen {mobile[-4:]}"
 
-        # 4. Generate JWT Tokens
+        # 4. Enforce Portal-Specific Role Boundaries
+        portal = (data.get('portal') or data.get('requested_role') or '').strip().lower()
+        if portal == 'worker' and role != 'worker':
+            print(f"[AUTH LOGIN RESTRICTED] Non-worker account '{mobile}' (Role: {role}) denied access to Field Worker Portal.", flush=True)
+            return Response({
+                "detail": "Access restricted: This portal is strictly for authorized municipal Field Workers. Citizen accounts cannot sign in here."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if portal == 'citizen' and role != 'citizen':
+            print(f"[AUTH LOGIN RESTRICTED] Staff/Worker account '{mobile}' (Role: {role}) denied access to Citizen Portal.", flush=True)
+            return Response({
+                "detail": "Access restricted: Municipal Field Workers and Staff must sign in via their respective departmental portals."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # 5. Generate JWT Tokens
         access_token = generate_jwt_token(user.id, role, mobile)
         refresh_token = generate_jwt_token(user.id, role, mobile)
 

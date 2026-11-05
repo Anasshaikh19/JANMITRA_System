@@ -4,11 +4,12 @@
  * File: src/pages/LoginPage.jsx
  * Developer: Faizan Rayeen & Anas Shaikh
  * Description: Production Login and Registration page for Citizens & Workers.
- *              - Authentic backend authentication with SQLite & PBKDF2
+ *              - Strict portal separation (Worker credentials stay in Worker portal,
+ *                Citizen credentials stay in Citizen portal)
+ *              - Professional Government Workforce Portal branding for Workers
+ *              - Completely clean form inputs with aggressive browser autofill blockers
  *              - Email address input for Citizen Registration
  *              - Immediate "Successfully registered" confirmation
- *              - Field Worker login (no registration option for workers)
- *              - 100% pure English, strictly zero dev shortcuts/mock buttons
  * ==============================================================================
  */
 
@@ -33,13 +34,13 @@ const API_BASE_URL = getApiBaseUrl();
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // URL search params: ?tab=register&role=citizen / ?role=worker
   const roleParam = searchParams.get('role');
   const tabParam = searchParams.get('tab');
 
-  const [selectedRole, setSelectedRole] = useState(roleParam === 'worker' ? 'worker' : 'citizen');
+  const selectedRole = roleParam === 'worker' ? 'worker' : 'citizen';
   const [activeTab, setActiveTab] = useState(selectedRole === 'worker' ? 'login' : (tabParam === 'register' ? 'register' : 'login'));
 
   // Auth context
@@ -55,13 +56,13 @@ export const LoginPage = () => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Login Form State
+  // Login Form State - Guaranteed 100% clean and empty
   const [loginForm, setLoginForm] = useState({
     mobile: '',
     password: ''
   });
 
-  // Register Form State (Citizen only)
+  // Register Form State (Citizen only) - Guaranteed 100% clean and empty
   const [registerForm, setRegisterForm] = useState({
     name: '',
     mobile: '',
@@ -75,37 +76,29 @@ export const LoginPage = () => {
   const [loginErrors, setLoginErrors] = useState({});
   const [registerErrors, setRegisterErrors] = useState({});
 
-  // Sync params when URL changes
+  // Reset form fields to completely blank whenever role or activeTab changes
   useEffect(() => {
-    const currentRole = searchParams.get('role');
-    const currentTab = searchParams.get('tab');
-    if (currentRole === 'worker') {
-      setSelectedRole('worker');
-      setActiveTab('login'); // Workers only have login
-    } else {
-      setSelectedRole('citizen');
-      if (currentTab === 'register') {
-        setActiveTab('register');
-      } else {
-        setActiveTab('login');
-      }
-    }
-  }, [searchParams]);
-
-  /**
-   * Switch between Citizen and Worker modes
-   */
-  const handleRoleSwitch = (newRole) => {
-    setSelectedRole(newRole);
-    setApiError('');
-    setRegSuccessMessage('');
-    if (newRole === 'worker') {
+    if (selectedRole === 'worker') {
       setActiveTab('login');
-      setSearchParams({ role: 'worker' });
+    } else if (tabParam === 'register') {
+      setActiveTab('register');
     } else {
-      setSearchParams({ role: 'citizen' });
+      setActiveTab('login');
     }
-  };
+
+    setLoginForm({ mobile: '', password: '' });
+    setRegisterForm({
+      name: '',
+      mobile: '',
+      email: '',
+      ward: '',
+      password: '',
+      confirmPassword: ''
+    });
+    setLoginErrors({});
+    setRegisterErrors({});
+    setApiError('');
+  }, [roleParam, tabParam, selectedRole]);
 
   /**
    * Role-based redirection upon successful authentication
@@ -200,6 +193,7 @@ export const LoginPage = () => {
   /**
    * Handle Login Form Submission
    * POST /api/v1/auth/login/
+   * Strictly enforces portal access boundaries (Workers only on Worker portal, Citizens only on Citizen portal)
    */
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -218,7 +212,8 @@ export const LoginPage = () => {
         },
         body: JSON.stringify({
           mobile: loginForm.mobile.trim(),
-          password: loginForm.password
+          password: loginForm.password,
+          portal: selectedRole // Strictly enforce 'worker' or 'citizen'
         })
       });
 
@@ -229,10 +224,20 @@ export const LoginPage = () => {
         return;
       }
 
+      // Portal access guard check
+      if (selectedRole === 'worker' && data.role !== 'worker') {
+        setApiError('Access restricted: This portal is strictly for authorized municipal Field Workers. Citizen accounts cannot sign in here.');
+        return;
+      }
+      if (selectedRole === 'citizen' && data.role !== 'citizen') {
+        setApiError('Access restricted: Municipal Field Workers and Staff must sign in via their respective departmental portals.');
+        return;
+      }
+
       // Store authentic session in AuthContext
       await login(data);
 
-      // Redirect by authenticated role
+      // Redirect strictly to the authorized dashboard
       const userRole = data.role || data.user?.role || (selectedRole === 'worker' ? 'worker' : 'citizen');
       handleRoleRedirect(userRole);
     } catch (err) {
@@ -278,11 +283,10 @@ export const LoginPage = () => {
         return;
       }
 
-      // Successful registration: show clear success alert & switch to login
-      const registeredMobile = registerForm.mobile.trim();
+      // Successful registration: show clear success alert & switch to clean login
       setRegSuccessMessage('You have successfully registered! Please sign in with your credentials.');
       setLoginForm({
-        mobile: registeredMobile,
+        mobile: '',
         password: ''
       });
       setRegisterForm({
@@ -294,7 +298,6 @@ export const LoginPage = () => {
         confirmPassword: ''
       });
       setActiveTab('login');
-      setSearchParams({ role: 'citizen' });
 
     } catch (err) {
       console.error('[Register Error]', err);
@@ -306,27 +309,14 @@ export const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
-      {/* Top Back Link */}
-      <div className="w-full max-w-md mx-auto mb-3 flex items-center justify-between">
+      {/* Top Back Link - Clean and strictly back to public home only */}
+      <div className="w-full max-w-md mx-auto mb-3">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-xs font-bold text-[#0d2a53] hover:text-blue-700 transition px-3 py-1.5 rounded-lg hover:bg-slate-200/60"
         >
           <span>←</span> Back to Public Home
         </Link>
-
-        {/* Portal Mode Switcher Pill */}
-        <button
-          type="button"
-          onClick={() => handleRoleSwitch(selectedRole === 'worker' ? 'citizen' : 'worker')}
-          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition border ${
-            selectedRole === 'worker'
-              ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-              : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-          }`}
-        >
-          {selectedRole === 'worker' ? 'Switch to Citizen Portal' : '👷 Field Worker Portal'}
-        </button>
       </div>
 
       {/* Centered Mobile-First Container */}
@@ -363,7 +353,7 @@ export const LoginPage = () => {
           {/* Tagline */}
           <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-xs mx-auto leading-relaxed">
             {selectedRole === 'worker'
-              ? 'Authorized Field Worker Operations & Repair Dispatch Portal'
+              ? 'Government-Issued Municipal Workforce Portal'
               : activeTab === 'register' 
               ? 'New Citizen Registration for Grievance Redressal'
               : 'Citizen Civic Issue Reporting & Redressal Portal'}
@@ -373,7 +363,7 @@ export const LoginPage = () => {
         {/* ================= FORM CARD ================= */}
         <div className="bg-white p-6 sm:p-8">
           
-          {/* TABS HEADER (Citizen mode shows Sign In + Register. Worker mode shows Worker Sign In only) */}
+          {/* TABS HEADER: Citizen mode has Sign In & Register tabs. Worker mode has official workforce header */}
           {selectedRole === 'citizen' ? (
             <div className="flex border-b border-slate-200 mb-6">
               <button
@@ -382,7 +372,6 @@ export const LoginPage = () => {
                   setActiveTab('login');
                   setApiError('');
                   setRegSuccessMessage('');
-                  setSearchParams({ role: 'citizen' });
                 }}
                 className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
                   activeTab === 'login'
@@ -402,7 +391,6 @@ export const LoginPage = () => {
                   setActiveTab('register');
                   setApiError('');
                   setRegSuccessMessage('');
-                  setSearchParams({ role: 'citizen', tab: 'register' });
                 }}
                 className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
                   activeTab === 'register'
@@ -417,15 +405,15 @@ export const LoginPage = () => {
               </button>
             </div>
           ) : (
-            <div className="border-b border-slate-200 mb-6 pb-3">
-              <div className="text-sm font-bold text-amber-900 flex items-center justify-between">
+            <div className="border-b border-slate-200 mb-6 pb-4">
+              <div className="text-sm font-bold text-amber-950 flex items-center justify-between">
                 <span>👷 Field Worker Sign In</span>
-                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  Staff Access Only
+                <span className="text-[11px] font-bold text-amber-800 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-300/60 uppercase tracking-wide">
+                  Official Workforce
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Public registration is disabled for field workers. Please sign in with your authorized municipal mobile number.
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                Sign in using the official government-assigned mobile number and workforce credentials issued by your municipal department.
               </p>
             </div>
           )}
@@ -462,11 +450,29 @@ export const LoginPage = () => {
 
           {/* ================= 1. LOGIN FORM ================= */}
           {activeTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleLoginSubmit} noValidate autoComplete="off" className="space-y-4">
+              {/* Browser Autofill Traps to prevent browser from pre-filling saved passwords */}
+              <input
+                type="text"
+                name="autofill_prevent_user"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                readOnly
+              />
+              <input
+                type="password"
+                name="autofill_prevent_key"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                readOnly
+              />
+
               {/* Mobile Number */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  {selectedRole === 'worker' ? 'Worker Mobile Number' : 'Registered Mobile Number'} <span className="text-red-500">*</span>
+                  {selectedRole === 'worker' ? 'Assigned Worker Mobile Number' : 'Registered Mobile Number'} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
@@ -476,6 +482,9 @@ export const LoginPage = () => {
                     type="tel"
                     inputMode="numeric"
                     maxLength={10}
+                    autoComplete="off"
+                    name={selectedRole === 'worker' ? 'jmc_worker_auth_mobile' : 'jmc_citizen_auth_mobile'}
+                    id={selectedRole === 'worker' ? 'jmc_worker_auth_mobile' : 'jmc_citizen_auth_mobile'}
                     placeholder="9876543210"
                     value={loginForm.mobile}
                     onChange={(e) => {
@@ -502,12 +511,15 @@ export const LoginPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Password <span className="text-red-500">*</span>
+                    {selectedRole === 'worker' ? 'Official Authorization Password' : 'Password'} <span className="text-red-500">*</span>
                   </label>
                 </div>
                 <div className="relative">
                   <input
                     type={showLoginPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    name={selectedRole === 'worker' ? 'jmc_worker_auth_pwd' : 'jmc_citizen_auth_pwd'}
+                    id={selectedRole === 'worker' ? 'jmc_worker_auth_pwd' : 'jmc_citizen_auth_pwd'}
                     placeholder="Enter your password"
                     value={loginForm.password}
                     onChange={(e) => {
@@ -572,15 +584,33 @@ export const LoginPage = () => {
               {/* Information Note */}
               <div className="pt-2 text-center text-xs text-slate-500">
                 {selectedRole === 'worker'
-                  ? 'Authorized Field Workers (PWD, SWM, PHE, ELEC)'
-                  : 'Authorized for Registered Citizens of Janmitra Municipal Corporation'}
+                  ? 'Official workforce portal for Janmitra municipal field technicians and supervisors.'
+                  : 'Authorized for registered citizens of Janmitra Municipal Corporation.'}
               </div>
             </form>
           )}
 
           {/* ================= 2. CITIZEN REGISTER FORM ================= */}
           {activeTab === 'register' && selectedRole === 'citizen' && (
-            <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleRegisterSubmit} noValidate autoComplete="off" className="space-y-4">
+              {/* Browser Autofill Traps */}
+              <input
+                type="text"
+                name="autofill_prevent_reg_user"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                readOnly
+              />
+              <input
+                type="password"
+                name="autofill_prevent_reg_key"
+                tabIndex={-1}
+                aria-hidden="true"
+                style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                readOnly
+              />
+
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -588,6 +618,9 @@ export const LoginPage = () => {
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  name="jmc_reg_fullname"
+                  id="jmc_reg_fullname"
                   placeholder="e.g. Faizan Rayeen"
                   value={registerForm.name}
                   onChange={(e) => {
@@ -621,6 +654,9 @@ export const LoginPage = () => {
                     type="tel"
                     inputMode="numeric"
                     maxLength={10}
+                    autoComplete="off"
+                    name="jmc_reg_mobile"
+                    id="jmc_reg_mobile"
                     placeholder="9876543210"
                     value={registerForm.mobile}
                     onChange={(e) => {
@@ -650,6 +686,9 @@ export const LoginPage = () => {
                 </label>
                 <input
                   type="email"
+                  autoComplete="off"
+                  name="jmc_reg_email"
+                  id="jmc_reg_email"
                   placeholder="e.g. faizan@example.com"
                   value={registerForm.email}
                   onChange={(e) => {
@@ -676,6 +715,8 @@ export const LoginPage = () => {
                   Municipal Ward <span className="text-red-500">*</span>
                 </label>
                 <select
+                  name="jmc_reg_ward"
+                  id="jmc_reg_ward"
                   value={registerForm.ward}
                   onChange={(e) => {
                     setRegisterForm((prev) => ({ ...prev, ward: e.target.value }));
@@ -709,6 +750,9 @@ export const LoginPage = () => {
                 <div className="relative">
                   <input
                     type={showRegPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    name="jmc_reg_pwd"
+                    id="jmc_reg_pwd"
                     placeholder="Minimum 6 characters"
                     value={registerForm.password}
                     onChange={(e) => {
@@ -755,6 +799,9 @@ export const LoginPage = () => {
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    name="jmc_reg_confirm_pwd"
+                    id="jmc_reg_confirm_pwd"
                     placeholder="Re-enter your password"
                     value={registerForm.confirmPassword}
                     onChange={(e) => {
