@@ -323,22 +323,22 @@ export const LoginPage = () => {
       <div className="w-full max-w-md mx-auto shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
         
         {/* ================= HEADER CARD ================= */}
-        <div className="bg-[#0d2a53] text-white px-6 py-8 text-center relative">
+        <div className="bg-[#0d2a53] text-white px-6 py-6 sm:py-7 text-center relative">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
 
-          {/* Logo / Emblem - Official Municipal Gold Crest */}
-          <div className="inline-flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-amber-500 via-amber-300 to-amber-600 p-[3px] mb-3.5 shadow-2xl shadow-black/40 group">
-            <div className="w-full h-full rounded-full bg-[#07172e] flex items-center justify-center overflow-hidden p-1 shadow-inner">
+          {/* Logo / Emblem - Official Municipal Gold Crest (Balanced Size) */}
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-amber-500 via-amber-300 to-amber-600 p-[2px] mb-2.5 shadow-xl shadow-black/30 group">
+            <div className="w-full h-full rounded-full bg-[#07172e] flex items-center justify-center overflow-hidden p-0.5 shadow-inner">
               <img 
                 src="/janmitra-logo.png" 
                 alt="Janmitra Municipal Corporation Official Seal" 
-                className="w-full h-full rounded-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-300" 
+                className="w-full h-full rounded-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-300" 
               />
             </div>
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl sm:text-3xl font-black tracking-wide text-white uppercase">
+          <h1 className="text-2xl sm:text-2xl font-black tracking-wide text-white uppercase">
             JANMITRA
           </h1>
 
