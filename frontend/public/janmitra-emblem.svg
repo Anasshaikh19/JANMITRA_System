@@ -1,68 +1,152 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
   <defs>
-    <linearGradient id="embSaffron" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF9933" />
-      <stop offset="100%" stop-color="#EA580C" />
+    <!-- Vibrant Dynamic Gradients -->
+    <linearGradient id="vibrantSaffron" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#FF7A00" />
+      <stop offset="60%" stop-color="#FF5100" />
+      <stop offset="100%" stop-color="#DD2C00" />
     </linearGradient>
-    <linearGradient id="embGreen" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#16A34A" />
-      <stop offset="100%" stop-color="#14532D" />
+
+    <linearGradient id="vibrantGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
     </linearGradient>
-    <linearGradient id="embNavy" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0F2D59" />
-      <stop offset="100%" stop-color="#071830" />
+
+    <linearGradient id="deepNavy" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1E3B" />
+      <stop offset="50%" stop-color="#081426" />
+      <stop offset="100%" stop-color="#030A14" />
     </linearGradient>
-    <linearGradient id="embGold" x1="0%" y1="0%" x2="100%" y2="100%">
+
+    <linearGradient id="metallicGold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FDE047" />
-      <stop offset="100%" stop-color="#D97706" />
+      <stop offset="35%" stop-color="#F59E0B" />
+      <stop offset="70%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#92400E" />
     </linearGradient>
+
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+
+    <linearGradient id="highwayGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#020617" flood-opacity="0.35" />
+    </filter>
   </defs>
 
-  <!-- Outer Ring Base -->
-  <circle cx="64" cy="64" r="60" fill="url(#embNavy)" stroke="url(#embGold)" stroke-width="3" />
+  <!-- Background Circular Shield with Rich Drop Shadow -->
+  <circle cx="200" cy="200" r="185" fill="url(#deepNavy)" stroke="url(#metallicGold)" stroke-width="4.5" filter="url(#cardShadow)" />
 
-  <!-- Tricolor Arcs -->
-  <!-- Saffron Top Half -->
-  <path d="M 16 64 A 48 48 0 0 1 112 64" fill="none" stroke="url(#embSaffron)" stroke-width="8" stroke-linecap="round" />
-  <!-- Green Bottom Half -->
-  <path d="M 112 64 A 48 48 0 0 1 16 64" fill="none" stroke="url(#embGreen)" stroke-width="8" stroke-linecap="round" />
+  <!-- Subtle Concentric Tech Ring Grid -->
+  <circle cx="200" cy="200" r="162" fill="none" stroke="#1E3A8A" stroke-width="1.5" stroke-dasharray="3,6" opacity="0.4" />
+  <circle cx="200" cy="200" r="148" fill="none" stroke="#38BDF8" stroke-width="0.8" opacity="0.25" />
 
-  <!-- Center White Shield Disc -->
-  <circle cx="64" cy="64" r="41" fill="#FFFFFF" />
+  <!-- ================= TOP: DYNAMIC FLOWING SAFFRON WAVE ================= -->
+  <!-- Aerodynamic, sleek tricolor ribbon that embraces the top of the emblem -->
+  <path d="M 52 175 C 60 100, 120 52, 200 52 C 265 52, 320 85, 345 140 C 315 110, 260 90, 200 90 C 140 90, 85 125, 52 175 Z"
+        fill="url(#vibrantSaffron)" filter="url(#softGlow)" />
+  <path d="M 75 160 C 105 105, 150 82, 200 82 C 255 82, 295 102, 330 142"
+        fill="none" stroke="#FFD8A8" stroke-width="2.5" opacity="0.6" stroke-linecap="round" />
 
-  <!-- Ashoka Chakra subtle ring -->
-  <circle cx="64" cy="64" r="33" fill="none" stroke="#0F2D59" stroke-width="1.5" opacity="0.25" stroke-dasharray="2,3" />
+  <!-- ================= BOTTOM: DYNAMIC FLOWING GREEN WAVE ================= -->
+  <!-- Aerodynamic, sleek emerald green ribbon that grounds the bottom of the emblem -->
+  <path d="M 348 225 C 340 300, 280 348, 200 348 C 135 348, 80 315, 55 260 C 85 290, 140 310, 200 310 C 260 310, 315 275, 348 225 Z"
+        fill="url(#vibrantGreen)" filter="url(#softGlow)" />
+  <path d="M 325 240 C 295 295, 250 318, 200 318 C 145 318, 105 298, 70 258"
+        fill="none" stroke="#A7F3D0" stroke-width="2.5" opacity="0.6" stroke-linecap="round" />
 
-  <!-- City Skyline -->
-  <g fill="#1E293B">
-    <!-- Left Building -->
-    <rect x="42" y="44" width="9" height="26" fill="#334155" rx="1" />
-    <!-- Center Headquarters with Flag Mast -->
-    <rect x="54" y="32" width="16" height="38" fill="#0F172A" rx="1" />
-    <polygon points="54,32 62,22 70,32" fill="#0D2A53" />
-    <!-- Golden beacon light -->
-    <circle cx="62" cy="20" r="2.5" fill="#EAB308" />
-    <!-- Right Building -->
-    <rect x="73" y="40" width="12" height="30" fill="#475569" rx="1" />
+  <!-- ================= CENTER: ASHOKA CHAKRA SUNBURST ================= -->
+  <g transform="translate(200, 165)" opacity="0.9">
+    <!-- Golden Radiant Glow Ring -->
+    <circle cx="0" cy="0" r="42" fill="#0D2A53" stroke="url(#metallicGold)" stroke-width="2.5" />
+    <circle cx="0" cy="0" r="38" fill="none" stroke="#38BDF8" stroke-width="1" stroke-dasharray="2,3" />
+
+    <!-- 24 Spokes of Ashoka Chakra -->
+    <g stroke="#60A5FA" stroke-width="1.2">
+      <!-- 12 lines creating 24 spokes -->
+      <line x1="0" y1="-37" x2="0" y2="37" />
+      <line x1="-37" y1="0" x2="37" y2="0" />
+      <line x1="-26.2" y1="-26.2" x2="26.2" y2="26.2" />
+      <line x1="26.2" y1="-26.2" x2="-26.2" y2="26.2" />
+      <line x1="-14.2" y1="-34.2" x2="14.2" y2="34.2" />
+      <line x1="14.2" y1="-34.2" x2="-14.2" y2="34.2" />
+      <line x1="-34.2" y1="-14.2" x2="34.2" y2="14.2" />
+      <line x1="34.2" y1="-14.2" x2="-34.2" y2="14.2" />
+      <line x1="-34.2" y1="14.2" x2="34.2" y2="-14.2" />
+      <line x1="-14.2" y1="34.2" x2="14.2" y2="-34.2" />
+      <line x1="-26.2" y1="26.2" x2="26.2" y2="-26.2" />
+      <line x1="0" y1="0" x2="0" y2="0" stroke-width="0" />
+    </g>
+    <!-- Center Hub Dot -->
+    <circle cx="0" cy="0" r="5" fill="url(#metallicGold)" />
   </g>
 
-  <!-- PWD Road Highway Triangle Sweeping Down -->
-  <path d="M 50 94 L 59 62 L 65 62 L 78 94 Z" fill="#334155" />
-  <line x1="62" y1="65" x2="62" y2="72" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" />
-  <line x1="63" y1="76" x2="63" y2="89" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+  <!-- ================= CIVIC SMART CITY SILHOUETTE ================= -->
+  <!-- Modern architectural clean skyline -->
+  <g fill="#E2E8F0" opacity="0.95">
+    <!-- Left Iconic Building -->
+    <path d="M 125 210 L 140 178 L 155 210 Z" fill="#94A3B8" />
+    <rect x="133" y="195" width="14" height="25" fill="#CBD5E1" rx="1" />
 
-  <!-- Clean Water Droplet (Right) -->
-  <path d="M 86 64 C 86 58, 89 54, 91 50 C 93 54, 96 58, 96 64 C 96 68, 93 71, 91 71 C 88 71, 86 68, 86 64 Z" fill="#0284C7" />
+    <!-- Municipal Dome / Vidhan Bhavan style central monument -->
+    <path d="M 175 220 L 175 188 C 175 168, 225 168, 225 188 L 225 220 Z" fill="#F8FAFC" opacity="0.9" />
+    <!-- Dome Spire -->
+    <line x1="200" y1="168" x2="200" y2="152" stroke="url(#metallicGold)" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="200" cy="150" r="3" fill="#FCD34D" />
 
-  <!-- Sanitation Green Leaf (Left) -->
-  <path d="M 40 76 C 30 72, 28 60, 38 57 C 41 64, 41 71, 40 76 Z" fill="url(#embGreen)" />
+    <!-- Right Modern High-Rise Tower -->
+    <rect x="238" y="172" width="16" height="48" fill="#CBD5E1" rx="1.5" />
+    <polygon points="238,172 246,160 254,172" fill="#94A3B8" />
+    <rect x="258" y="186" width="14" height="34" fill="#94A3B8" rx="1" />
+  </g>
 
-  <!-- Golden Base Arc -->
-  <path d="M 32 94 Q 64 108 96 94" fill="none" stroke="url(#embGold)" stroke-width="3" stroke-linecap="round" />
+  <!-- ================= CIVIC HIGHWAY ROAD (PWD & INFRASTRUCTURE) ================= -->
+  <!-- Sweeping wide highway emerging dynamically forward -->
+  <path d="M 182 215 L 218 215 L 265 292 L 135 292 Z" fill="url(#highwayGrad)" stroke="#334155" stroke-width="1.5" />
+  <!-- Glowing Center Lane Dividers -->
+  <line x1="200" y1="218" x2="200" y2="230" stroke="#FDE047" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="200" y1="238" x2="200" y2="255" stroke="#FDE047" stroke-width="3.2" stroke-linecap="round" />
+  <line x1="200" y1="265" x2="200" y2="288" stroke="#FDE047" stroke-width="4.5" stroke-linecap="round" />
 
-  <!-- Central 'JM' Monogram / Text Banner -->
-  <rect x="29" y="96" width="70" height="15" rx="7.5" fill="url(#embNavy)" stroke="url(#embGold)" stroke-width="1.2" />
-  <text x="64" y="107" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="8.5" fill="#FFFFFF" text-anchor="middle" letter-spacing="1.5">
-    JANMITRA
+  <!-- ================= CIVIC FIXES EMBLEMS (WATER & GREENERY) ================= -->
+  <!-- Clean Water Drop (Public Health Engineering) on Left -->
+  <g transform="translate(108, 220) scale(0.9)">
+    <path d="M 12 0 C 12 -8, 22 -18, 22 -24 C 22 -18, 32 -8, 32 0 C 32 8, 27 14, 22 14 C 17 14, 12 8, 12 0 Z" fill="url(#cyanGlow)" />
+    <circle cx="19" cy="-4" r="2.5" fill="#FFFFFF" opacity="0.6" />
+  </g>
+
+  <!-- Clean Environment Leaf (Solid Waste Management) on Right -->
+  <g transform="translate(262, 218) scale(0.9)">
+    <path d="M 10 12 C 0 8, -4 -6, 8 -16 C 18 -8, 18 4, 10 12 Z" fill="url(#vibrantGreen)" />
+    <path d="M 0 0 Q 8 -4 14 -10" stroke="#D1FAE5" stroke-width="1.5" fill="none" stroke-linecap="round" />
+  </g>
+
+  <!-- ================= GOLDEN CITIZEN SHIELD / TRUST ACCENT ================= -->
+  <path d="M 95 285 Q 200 325 305 285" fill="none" stroke="url(#metallicGold)" stroke-width="5" stroke-linecap="round" filter="url(#softGlow)" />
+
+  <!-- ================= BRAND TYPOGRAPHY ================= -->
+  <!-- Central Badge Ribbon -->
+  <g transform="translate(200, 316)">
+    <rect x="-115" y="-14" width="230" height="28" rx="14" fill="#0B1E3B" stroke="url(#metallicGold)" stroke-width="2" />
+    <text x="0" y="5" font-family="'Plus Jakarta Sans', Inter, 'Segoe UI', sans-serif" font-weight="900" font-size="15" fill="#FFFFFF" text-anchor="middle" letter-spacing="3.5">
+      JANMITRA
+    </text>
+  </g>
+
+  <!-- Subtitle: JMC CIVIC PORTAL -->
+  <text x="200" y="342" font-family="'Plus Jakarta Sans', Inter, sans-serif" font-weight="700" font-size="8.5" fill="#FCD34D" text-anchor="middle" letter-spacing="1.8">
+    CIVIC GRIEVANCE &amp; REDRESSAL SYSTEM
   </text>
 </svg>
