@@ -326,9 +326,9 @@ export const LoginPage = () => {
         <div className="bg-[#0d2a53] text-white px-6 py-8 text-center relative">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
 
-          {/* Logo / Emblem */}
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner">
-            <span className="text-3xl" role="img" aria-label="Municipal Corporation Logo">🏛️</span>
+          {/* Logo / Emblem - Official Indian Tricolor + Civic Issue Seal */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner p-1.5">
+            <img src="/janmitra-emblem.svg" alt="Janmitra Municipal Corporation Logo" className="w-full h-full object-contain drop-shadow" />
           </div>
 
           {/* Title */}

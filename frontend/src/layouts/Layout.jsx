@@ -75,9 +75,9 @@ export const Layout = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(`/${currentRole === 'dept_officer' ? 'officer' : currentRole}`)}
-              className="flex items-center gap-2 text-left focus:outline-none"
+              className="flex items-center gap-2.5 text-left focus:outline-none"
             >
-              <span className="text-2xl" role="img" aria-label="Logo">🏛️</span>
+              <img src="/janmitra-emblem.svg" alt="Janmitra Logo" className="w-8 h-8 object-contain drop-shadow" />
               <div>
                 <span className="font-black text-lg tracking-wider text-white uppercase block leading-none">
                   JANMITRA

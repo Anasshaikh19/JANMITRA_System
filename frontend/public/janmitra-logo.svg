@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Indian Tricolor Gradients -->
+    <linearGradient id="saffronGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF9933" />
+      <stop offset="100%" stop-color="#E65100" />
+    </linearGradient>
+
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2E7D32" />
+      <stop offset="100%" stop-color="#0F5132" />
+    </linearGradient>
+
+    <linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D2A53" />
+      <stop offset="100%" stop-color="#05162D" />
+    </linearGradient>
+
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <linearGradient id="whitePlate" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F8FAFC" />
+    </linearGradient>
+
+    <linearGradient id="roadGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#64748B" />
+    </linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Outer Protective Shield / Circular Base with Drop Shadow -->
+  <circle cx="256" cy="256" r="240" fill="url(#navyGrad)" filter="url(#shadow)" stroke="url(#goldGrad)" stroke-width="6" />
+
+  <!-- Indian Tricolor Circular Ribbons -->
+  <!-- 1. Top Saffron Arc (Kesari - Commitment & Public Service) -->
+  <path d="M 66 256 A 190 190 0 0 1 446 256" fill="none" stroke="url(#saffronGrad)" stroke-width="24" stroke-linecap="round" />
+
+  <!-- 2. Bottom Green Arc (Green - Sanitation, Environment & Cleanliness) -->
+  <path d="M 446 256 A 190 190 0 0 1 66 256" fill="none" stroke="url(#greenGrad)" stroke-width="24" stroke-linecap="round" />
+
+  <!-- Inner Pure White Circular Hub -->
+  <circle cx="256" cy="256" r="170" fill="url(#whitePlate)" stroke="#CBD5E1" stroke-width="2" />
+
+  <!-- Ashoka Chakra 24-Spoke Motif (Transparency & 24/7 Governance) -->
+  <g transform="translate(256, 256)" opacity="0.12">
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#0D2A53" stroke-width="4" />
+    <circle cx="0" cy="0" r="132" fill="none" stroke="#0D2A53" stroke-width="2" stroke-dasharray="4,6" />
+    <!-- 24 Spokes -->
+    <path d="
+      M 0 0 L 0 -138 M 0 0 L 0 138 M 0 0 L -138 0 M 0 0 L 138 0
+      M 0 0 L 97.6 -97.6 M 0 0 L -97.6 97.6 M 0 0 L -97.6 -97.6 M 0 0 L 97.6 97.6
+      M 0 0 L 49 -129 M 0 0 L -49 129 M 0 0 L 129 -49 M 0 0 L -129 49
+      M 0 0 L -49 -129 M 0 0 L 49 129 M 0 0 L -129 -49 M 0 0 L 129 49
+      M 0 0 L 71 -118 M 0 0 L -71 118 M 0 0 L 118 -71 M 0 0 L -118 71
+      M 0 0 L -71 -118 M 0 0 L 71 118 M 0 0 L -118 -71 M 0 0 L 118 71
+    " stroke="#0D2A53" stroke-width="2" />
+  </g>
+
+  <!-- ================= CIVIC ICONS CENTERPIECE ================= -->
+  <!-- 1. Modern Civic City Skyline (Municipal Administration & Infrastructure) -->
+  <g fill="#1E293B">
+    <!-- Left Building -->
+    <rect x="175" y="165" width="28" height="95" rx="3" fill="#334155" />
+    <rect x="180" y="172" width="6" height="7" fill="#F8FAFC" />
+    <rect x="191" y="172" width="6" height="7" fill="#F8FAFC" />
+    <rect x="180" y="186" width="6" height="7" fill="#F8FAFC" />
+    <rect x="191" y="186" width="6" height="7" fill="#F8FAFC" />
+    <rect x="180" y="200" width="6" height="7" fill="#F8FAFC" />
+    <rect x="191" y="200" width="6" height="7" fill="#F8FAFC" />
+
+    <!-- Center High-Rise / Civic Headquarters Tower -->
+    <rect x="210" y="130" width="45" height="130" rx="3" fill="#0F172A" />
+    <polygon points="210,130 232.5,95 255,130" fill="#0D2A53" />
+    <!-- Tower Windows -->
+    <rect x="218" y="138" width="8" height="9" fill="#FCD34D" />
+    <rect x="237" y="138" width="8" height="9" fill="#FCD34D" />
+    <rect x="218" y="154" width="8" height="9" fill="#93C5FD" />
+    <rect x="237" y="154" width="8" height="9" fill="#93C5FD" />
+    <rect x="218" y="170" width="8" height="9" fill="#93C5FD" />
+    <rect x="237" y="170" width="8" height="9" fill="#93C5FD" />
+    <rect x="218" y="186" width="8" height="9" fill="#93C5FD" />
+    <rect x="237" y="186" width="8" height="9" fill="#93C5FD" />
+    <rect x="218" y="202" width="8" height="9" fill="#93C5FD" />
+    <rect x="237" y="202" width="8" height="9" fill="#93C5FD" />
+
+    <!-- Right Building -->
+    <rect x="262" y="150" width="34" height="110" rx="3" fill="#1E293B" />
+    <rect x="268" y="158" width="7" height="8" fill="#F8FAFC" />
+    <rect x="282" y="158" width="7" height="8" fill="#F8FAFC" />
+    <rect x="268" y="172" width="7" height="8" fill="#F8FAFC" />
+    <rect x="282" y="172" width="7" height="8" fill="#F8FAFC" />
+    <rect x="268" y="186" width="7" height="8" fill="#F8FAFC" />
+    <rect x="282" y="186" width="7" height="8" fill="#F8FAFC" />
+    <rect x="268" y="200" width="7" height="8" fill="#F8FAFC" />
+    <rect x="282" y="200" width="7" height="8" fill="#F8FAFC" />
+
+    <!-- Far Right Municipal Clinic / Office -->
+    <rect x="303" y="175" width="26" height="85" rx="3" fill="#475569" />
+    <rect x="309" y="183" width="5" height="6" fill="#F8FAFC" />
+    <rect x="318" y="183" width="5" height="6" fill="#F8FAFC" />
+    <rect x="309" y="195" width="5" height="6" fill="#F8FAFC" />
+    <rect x="318" y="195" width="5" height="6" fill="#F8FAFC" />
+  </g>
+
+  <!-- 2. PWD Road & Infrastructure Highway (Representing Road Repairs & Pothole Fixes) -->
+  <path d="M 200 360 L 235 240 L 265 240 L 305 360 Z" fill="url(#roadGrad)" />
+  <!-- Road White Dash Dividers -->
+  <line x1="250" y1="246" x2="250" y2="260" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <line x1="251" y1="274" x2="251" y2="294" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" />
+  <line x1="252" y1="312" x2="252" y2="345" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" />
+
+  <!-- 3. Sanitation & Water Supply: Dynamic Green Leaf & Water Drop (Left & Right Flanks) -->
+  <!-- Left Green Environmental Leaf (Clean Nagpur & Solid Waste Management) -->
+  <path d="M 170 300 C 130 280, 120 225, 160 215 C 175 245, 175 275, 170 300 Z" fill="url(#greenGrad)" />
+  <path d="M 145 250 Q 160 260 170 275" stroke="#86EFAC" stroke-width="2" fill="none" />
+
+  <!-- Right Clean Water Droplet (Public Health Engineering & Clean Drinking Water) -->
+  <path d="M 335 255 C 335 235, 345 220, 350 205 C 355 220, 365 235, 365 255 C 365 270, 355 280, 345 280 C 335 280, 335 268, 335 255 Z" fill="#0284C7" />
+  <path d="M 342 248 C 342 242, 345 235, 350 225" stroke="#BAE6FD" stroke-width="2" fill="none" stroke-linecap="round" />
+
+  <!-- 4. Streetlighting Beacon Spark (Electrical Department) -->
+  <g transform="translate(250, 85)">
+    <circle cx="0" cy="0" r="7" fill="#FCD34D" />
+    <path d="M 0 -12 L 0 -8 M 0 8 L 0 12 M -12 0 L -8 0 M 8 0 L 12 0" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- 5. Protective Hands of Grievance Redressal (Citizen-Government Trust) -->
+  <!-- Base Saffron & Green Arc Accent Platform -->
+  <path d="M 120 355 Q 256 425 392 355" fill="none" stroke="url(#goldGrad)" stroke-width="10" stroke-linecap="round" />
+
+  <!-- ================= TEXT EMBLEM ================= -->
+  <!-- Central Emblem Text Banner -->
+  <g transform="translate(256, 385)" text-anchor="middle">
+    <!-- Redressal Banner Plate -->
+    <rect x="-140" y="-18" width="280" height="36" rx="18" fill="url(#navyGrad)" stroke="url(#goldGrad)" stroke-width="3" />
+    <text x="0" y="7" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="20" fill="#FFFFFF" letter-spacing="4">
+      JANMITRA
+    </text>
+  </g>
+
+  <!-- Bottom Arch Subtitle -->
+  <g transform="translate(256, 440)" text-anchor="middle">
+    <text x="0" y="0" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="12" fill="#FCD34D" letter-spacing="2">
+      CIVIC GRIEVANCE REDRESSAL
+    </text>
+    <text x="0" y="16" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="600" font-size="10" fill="#E2E8F0" letter-spacing="1.5">
+      MUNICIPAL CORPORATION
+    </text>
+  </g>
+</svg>

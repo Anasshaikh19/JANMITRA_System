@@ -580,10 +580,10 @@ export default function LandingHome() {
       {/* ========================================================================= */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Logo & Emblem */}
+          {/* Logo & Emblem - Official Indian Flag + Civic Issue Seal */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0d2a53] to-[#1e40af] flex items-center justify-center text-white font-extrabold shadow-md shadow-blue-900/20 group-hover:scale-105 transition transform">
-              <Building2 className="w-6 h-6 text-amber-400" />
+            <div className="w-12 h-12 rounded-2xl bg-white p-1 shadow-md shadow-blue-900/10 border border-slate-200 group-hover:scale-105 transition transform flex items-center justify-center">
+              <img src="/janmitra-emblem.svg" alt="Janmitra Municipal Corporation" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -1531,9 +1531,9 @@ export default function LandingHome() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Col 1: About JMC Janmitra */}
             <div className="space-y-3 md:col-span-1">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
-                  <Building2 className="w-5 h-5 text-amber-400" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-white/10 p-1 border border-white/20 flex items-center justify-center">
+                  <img src="/janmitra-emblem.svg" alt="Janmitra Logo" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-lg font-black tracking-tight text-white">JANMITRA</span>
               </div>
