@@ -26,6 +26,7 @@ import OfficerLayout from './layouts/OfficerLayout';
 import AdminLayout from './layouts/AdminLayout';
 
 // Pages
+import LandingHome from './pages/LandingHome';
 import LoginPage from './pages/LoginPage';
 import CitizenHome from './pages/citizen/Home';
 import MyComplaints from './pages/citizen/MyComplaints';
@@ -112,8 +113,8 @@ export default function App() {
             <Route path="/login" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
             <Route path="/register" element={<PublicAuthRoute><LoginPage /></PublicAuthRoute>} />
 
-            {/* Default Root Redirect based on authentication status */}
-            <Route path="/" element={<RootRedirect />} />
+            {/* ================= PUBLIC HOME / LANDING PAGE ================= */}
+            <Route path="/" element={<LandingHome />} />
 
             {/* ================= 1. CITIZEN PORTAL ================= */}
             <Route

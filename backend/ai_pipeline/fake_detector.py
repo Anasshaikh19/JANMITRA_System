@@ -57,6 +57,14 @@ class FakeDetector:
     Layer 1 Step 3: Deepfake & Generative AI Detector (Production Hardened).
     """
 
+    def predict(self, image_path: str) -> Dict[str, Any]:
+        """
+        Alias for check() with 'is_fake' compatibility key for pipeline runner.
+        """
+        res = self.check(image_path)
+        res["is_fake"] = not res.get("real", True)
+        return res
+
     def check(self, image_path: str) -> Dict[str, Any]:
         """
         Classify input image as real or AI-generated using HuggingFace with hardened guards.

@@ -59,6 +59,10 @@ const processQueue = (error, token = null) => {
 
 api.interceptors.request.use(
   (config) => {
+    // Normalize URL: ensure paths like '/v1/...' become '/api/v1/...'
+    if (config.url && config.url.startsWith('/v1/')) {
+      config.url = `/api${config.url}`;
+    }
     const token = getStoredToken();
     if (token) {
       config.headers = {
