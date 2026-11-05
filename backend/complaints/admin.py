@@ -1,124 +1,33 @@
 """
-GeoDjango Admin configuration for complaints app.
+==============================================================================
+JANMITRA - Civic Issue Reporting & Management System
+File: complaints/admin.py
+Developer: Anas Shaikh & Faizan Rayeen
+Description: Django Admin registration for Complaints, Wards, and Categories.
+==============================================================================
 """
 
 from django.contrib import admin
-try:
-    from django.contrib.gis import admin as gis_admin
-    BaseComplaintAdmin = gis_admin.GISModelAdmin
-except Exception:
-    BaseComplaintAdmin = admin.ModelAdmin
-from .models import (
-    Category,
-    Complaint,
-    ComplaintImage,
-    Department,
-    StatusHistory,
-    Ward,
-)
+from .models import Complaint, Category, Ward
 
 
-@admin.register(Ward)
-class WardAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name')
-    search_fields = ('id', 'name')
-    ordering = ('id',)
-
-
-@admin.register(Department)
-class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'short_name')
-    search_fields = ('id', 'name', 'short_name')
-    ordering = ('id',)
+@admin.register(Complaint)
+class ComplaintAdmin(admin.ModelAdmin):
+    list_display = ('tracking_id', 'title', 'category', 'ward', 'status', 'citizen', 'assigned_worker', 'created_at')
+    list_filter = ('status', 'ward', 'category', 'created_at')
+    search_fields = ('tracking_id', 'title', 'description', 'address', 'citizen__username', 'citizen__first_name')
+    readonly_fields = ('tracking_id', 'created_at', 'updated_at')
+    ordering = ('-created_at',)
 
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'department')
-    list_filter = ('department',)
-    search_fields = ('id', 'name', 'department__name', 'department__short_name')
-    ordering = ('id',)
+    list_display = ('id', 'name', 'department_id', 'sla_hours')
+    list_filter = ('department_id',)
+    search_fields = ('name',)
 
 
-class ComplaintImageInline(admin.TabularInline):
-    model = ComplaintImage
-    extra = 0
-    readonly_fields = ('id', 'uploaded_at')
-
-
-class StatusHistoryInline(admin.TabularInline):
-    model = StatusHistory
-    extra = 0
-    readonly_fields = ('old_status', 'new_status', 'changed_by', 'note', 'changed_at')
-    can_delete = False
-
-
-@admin.register(Complaint)
-class ComplaintAdmin(BaseComplaintAdmin):
-    """
-    OpenStreetMap-powered GIS Admin for civic issue reporting in Nagpur.
-    """
-    list_display = (
-        'tracking_id',
-        'title',
-        'category',
-        'department',
-        'ward',
-        'status',
-        'priority_level',
-        'priority_score',
-        'citizen',
-        'assigned_worker',
-        'fake_detected',
-        'is_duplicate',
-        'submitted_at',
-    )
-    list_filter = (
-        'status',
-        'priority_level',
-        'category',
-        'department',
-        'ward',
-        'fake_detected',
-        'is_duplicate',
-        'ward_override',
-        'submitted_at',
-    )
-    search_fields = (
-        'tracking_id',
-        'title',
-        'description',
-        'address',
-        'citizen__full_name',
-        'citizen__mobile',
-        'assigned_worker__full_name',
-        'assigned_worker__mobile',
-    )
-    readonly_fields = (
-        'id',
-        'tracking_id',
-        'department',
-        'submitted_at',
-        'updated_at',
-        'resolved_at',
-    )
-    inlines = [ComplaintImageInline, StatusHistoryInline]
-
-    # Default map settings centered on Nagpur Zero Mile (21.1458° N, 79.0882° E)
-    default_lon = 79.0882
-    default_lat = 21.1458
-    default_zoom = 12
-
-
-@admin.register(ComplaintImage)
-class ComplaintImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'complaint', 'image_type', 'uploaded_at')
-    list_filter = ('image_type', 'uploaded_at')
-    search_fields = ('complaint__tracking_id',)
-
-
-@admin.register(StatusHistory)
-class StatusHistoryAdmin(admin.ModelAdmin):
-    list_display = ('complaint', 'old_status', 'new_status', 'changed_by', 'changed_at')
-    list_filter = ('old_status', 'new_status', 'changed_at')
-    search_fields = ('complaint__tracking_id', 'note')
+@admin.register(Ward)
+class WardAdmin(admin.ModelAdmin):
+    list_display = ('ward_number', 'name')
+    ordering = ('ward_number',)
