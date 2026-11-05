@@ -102,8 +102,12 @@ const WorkerLayout = ({
               className="flex items-center gap-2 text-left group focus:outline-none"
               title="JANMITRA Home"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center text-xl text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform flex-shrink-0">
-                🏛️
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-300 to-amber-600 p-[1.5px] shadow-sm flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <img 
+                  src="/janmitra-logo.png" 
+                  alt="Janmitra Municipal Corporation Official Seal" 
+                  className="w-full h-full rounded-full object-contain" 
+                />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="font-black text-slate-900 tracking-tight text-base sm:text-lg flex items-center gap-1">

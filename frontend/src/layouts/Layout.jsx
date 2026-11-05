@@ -77,7 +77,13 @@ export const Layout = ({
               onClick={() => navigate(`/${currentRole === 'dept_officer' ? 'officer' : currentRole}`)}
               className="flex items-center gap-2.5 text-left focus:outline-none"
             >
-              <img src="/janmitra-logo-opt2-gold.jpg" alt="Janmitra Logo" className="w-8 h-8 rounded-full object-cover border border-amber-400 shadow-sm" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 via-amber-300 to-amber-600 p-[1.5px] shadow-md flex items-center justify-center shrink-0">
+                <img 
+                  src="/janmitra-logo.png" 
+                  alt="Janmitra Municipal Corporation Official Seal" 
+                  className="w-full h-full rounded-full object-contain" 
+                />
+              </div>
               <div>
                 <span className="font-black text-lg tracking-wider text-white uppercase block leading-none">
                   JANMITRA
