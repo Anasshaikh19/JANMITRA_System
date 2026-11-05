@@ -2,10 +2,13 @@
  * ==============================================================================
  * JANMITRA - Civic Issue Reporting & Management System
  * File: src/pages/LoginPage.jsx
- * Developer: Faizan Rayeen (Citizen Portal Lead)
- * Description: Complete, professional Login and Registration page for all
- *              user roles (citizen, worker, dept_officer, admin).
- *              Mobile-first responsive card layout using Tailwind CSS.
+ * Developer: Faizan Rayeen & Anas Shaikh
+ * Description: Production Login and Registration page for Citizens & Workers.
+ *              - Authentic backend authentication with SQLite & PBKDF2
+ *              - Email address input for Citizen Registration
+ *              - Immediate "Successfully registered" confirmation
+ *              - Field Worker login (no registration option for workers)
+ *              - 100% pure English, strictly zero dev shortcuts/mock buttons
  * ==============================================================================
  */
 
@@ -29,44 +32,23 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 export const LoginPage = () => {
-  // Navigation hook with fallback
-  let navigate;
-  try {
-    navigate = useNavigate();
-  } catch (e) {
-    navigate = (path) => { window.location.href = path; };
-  }
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // URL search params for role and active tab (?tab=register&role=citizen / ?role=worker)
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
-  const initialRole = searchParams.get('role') === 'worker' ? 'worker' : 'citizen';
+  // URL search params: ?tab=register&role=citizen / ?role=worker
+  const roleParam = searchParams.get('role');
+  const tabParam = searchParams.get('tab');
 
-  // Auth context for persisting credentials & triggering FCM registration
+  const [selectedRole, setSelectedRole] = useState(roleParam === 'worker' ? 'worker' : 'citizen');
+  const [activeTab, setActiveTab] = useState(selectedRole === 'worker' ? 'login' : (tabParam === 'register' ? 'register' : 'login'));
+
+  // Auth context
   const { login } = useAuth();
 
-  // Active Tab state ('login' | 'register')
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [selectedRole, setSelectedRole] = useState(initialRole);
-
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'register') {
-      setActiveTab('register');
-    }
-    const roleParam = searchParams.get('role');
-    if (roleParam === 'worker') {
-      setSelectedRole('worker');
-    } else if (roleParam === 'citizen') {
-      setSelectedRole('citizen');
-    }
-  }, [searchParams]);
-
-  // Loading state during API requests
+  // Loading and Alert states
   const [isLoading, setIsLoading] = useState(false);
-
-  // Global API error message
   const [apiError, setApiError] = useState('');
+  const [regSuccessMessage, setRegSuccessMessage] = useState('');
 
   // Password visibility toggles
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -79,10 +61,11 @@ export const LoginPage = () => {
     password: ''
   });
 
-  // Register Form State
+  // Register Form State (Citizen only)
   const [registerForm, setRegisterForm] = useState({
     name: '',
     mobile: '',
+    email: '',
     ward: '',
     password: '',
     confirmPassword: ''
@@ -92,12 +75,40 @@ export const LoginPage = () => {
   const [loginErrors, setLoginErrors] = useState({});
   const [registerErrors, setRegisterErrors] = useState({});
 
+  // Sync params when URL changes
+  useEffect(() => {
+    const currentRole = searchParams.get('role');
+    const currentTab = searchParams.get('tab');
+    if (currentRole === 'worker') {
+      setSelectedRole('worker');
+      setActiveTab('login'); // Workers only have login
+    } else {
+      setSelectedRole('citizen');
+      if (currentTab === 'register') {
+        setActiveTab('register');
+      } else {
+        setActiveTab('login');
+      }
+    }
+  }, [searchParams]);
+
   /**
-   * Role-based routing redirection
-   * citizen      -> /citizen
-   * worker       -> /worker
-   * dept_officer -> /officer
-   * admin        -> /admin
+   * Switch between Citizen and Worker modes
+   */
+  const handleRoleSwitch = (newRole) => {
+    setSelectedRole(newRole);
+    setApiError('');
+    setRegSuccessMessage('');
+    if (newRole === 'worker') {
+      setActiveTab('login');
+      setSearchParams({ role: 'worker' });
+    } else {
+      setSearchParams({ role: 'citizen' });
+    }
+  };
+
+  /**
+   * Role-based redirection upon successful authentication
    */
   const handleRoleRedirect = (role) => {
     const cleanRole = (role || 'citizen').toLowerCase().trim();
@@ -141,11 +152,12 @@ export const LoginPage = () => {
   };
 
   /**
-   * Validate Register inputs
+   * Validate Register inputs (Citizen)
    */
   const validateRegisterForm = () => {
     const errors = {};
     const mobileDigits = registerForm.mobile.trim();
+    const emailVal = registerForm.email.trim();
 
     if (!registerForm.name.trim()) {
       errors.name = 'Full name is required';
@@ -159,14 +171,20 @@ export const LoginPage = () => {
       errors.mobile = 'Enter a valid 10-digit mobile number';
     }
 
+    if (!emailVal) {
+      errors.email = 'Email address is required';
+    } else if (!/^[\w.-]+@[\w.-]+\.\w+$/.test(emailVal)) {
+      errors.email = 'Enter a valid email address';
+    }
+
     if (!registerForm.ward) {
       errors.ward = 'Please select your municipal ward';
     }
 
     if (!registerForm.password) {
       errors.password = 'Password is required';
-    } else if (registerForm.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
+    } else if (registerForm.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
     }
 
     if (!registerForm.confirmPassword) {
@@ -186,6 +204,7 @@ export const LoginPage = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
+    setRegSuccessMessage('');
 
     if (!validateLoginForm()) return;
 
@@ -206,64 +225,39 @@ export const LoginPage = () => {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        // Fallback for local development if server unreachable
-        const fallbackUser = {
-          id: 'u-faizan-1',
-          name: 'Faizan Rayeen',
-          mobile: loginForm.mobile.trim() || '8767972843',
-          role: 'citizen',
-          ward: 'Ward 4 (Mangalwari / North Nagpur)'
-        };
-        await login({
-          token: 'mock-jwt-token-local',
-          role: 'citizen',
-          user: fallbackUser
-        });
-        handleRoleRedirect('citizen');
+        setApiError(data.detail || data.mobile?.[0] || 'Invalid mobile number or password. Please verify your credentials.');
         return;
       }
 
-      // Store in AuthContext (saves tokens and triggers FCM permission)
+      // Store authentic session in AuthContext
       await login(data);
 
-      // Determine user role and redirect
-      const userRole = data.role || data.user?.role || 'citizen';
+      // Redirect by authenticated role
+      const userRole = data.role || data.user?.role || (selectedRole === 'worker' ? 'worker' : 'citizen');
       handleRoleRedirect(userRole);
     } catch (err) {
-      console.warn('[Login Local Fallback]', err);
-      const fallbackUser = {
-        id: 'u-faizan-1',
-        name: 'Faizan Rayeen',
-        mobile: loginForm.mobile.trim() || '8767972843',
-        role: 'citizen',
-        ward: 'Ward 4 (Mangalwari / North Nagpur)'
-      };
-      await login({
-        token: 'mock-jwt-token-local',
-        role: 'citizen',
-        user: fallbackUser
-      });
-      handleRoleRedirect('citizen');
+      console.error('[Login Error]', err);
+      setApiError('Unable to connect to Janmitra authentication server. Please check your backend connection.');
     } finally {
       setIsLoading(false);
     }
   };
 
   /**
-   * Handle Register Form Submission
-   * POST /api/v1/auth/register/ -> then auto-login
+   * Handle Citizen Register Form Submission
+   * POST /api/v1/auth/register/
    */
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
+    setRegSuccessMessage('');
 
     if (!validateRegisterForm()) return;
 
     setIsLoading(true);
 
     try {
-      // 1. Send registration payload
-      const regResponse = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -271,67 +265,40 @@ export const LoginPage = () => {
         body: JSON.stringify({
           name: registerForm.name.trim(),
           mobile: registerForm.mobile.trim(),
+          email: registerForm.email.trim(),
           ward: registerForm.ward,
           password: registerForm.password
         })
       });
 
-      const regData = await regResponse.json().catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
-      if (!regResponse.ok) {
-        // Fallback for seamless local test run: create local citizen session
-        const fallbackUser = {
-          id: 'u-faizan-' + Date.now(),
-          name: registerForm.name.trim() || 'Faizan Rayeen',
-          mobile: registerForm.mobile.trim() || '8767972843',
-          ward: registerForm.ward || 'Ward 4 (Mangalwari / North Nagpur)',
-          role: 'citizen'
-        };
-        await login({
-          token: 'mock-jwt-token-local',
-          role: 'citizen',
-          user: fallbackUser
-        });
-        handleRoleRedirect('citizen');
+      if (!response.ok) {
+        setApiError(data.detail || data.mobile?.[0] || data.email?.[0] || 'Registration failed. Please check your input.');
         return;
       }
 
-      // 2. Auto-login immediately after successful registration
-      const loginResponse = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          mobile: registerForm.mobile.trim(),
-          password: registerForm.password
-        })
+      // Successful registration: show clear success alert & switch to login
+      const registeredMobile = registerForm.mobile.trim();
+      setRegSuccessMessage('You have successfully registered! Please sign in with your credentials.');
+      setLoginForm({
+        mobile: registeredMobile,
+        password: ''
       });
+      setRegisterForm({
+        name: '',
+        mobile: '',
+        email: '',
+        ward: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setActiveTab('login');
+      setSearchParams({ role: 'citizen' });
 
-      const loginData = await loginResponse.json().catch(() => ({}));
-
-      if (loginResponse.ok) {
-        await login(loginData);
-        handleRoleRedirect(loginData.role || loginData.user?.role || 'citizen');
-      } else {
-        await login(regData);
-        handleRoleRedirect('citizen');
-      }
     } catch (err) {
-      console.warn('[Register Local Fallback]', err);
-      const fallbackUser = {
-        id: 'u-faizan-' + Date.now(),
-        name: registerForm.name.trim() || 'Faizan Rayeen',
-        mobile: registerForm.mobile.trim() || '8767972843',
-        ward: registerForm.ward || 'Ward 4 (Mangalwari / North Nagpur)',
-        role: 'citizen'
-      };
-      await login({
-        token: 'mock-jwt-token-local',
-        role: 'citizen',
-        user: fallbackUser
-      });
-      handleRoleRedirect('citizen');
+      console.error('[Register Error]', err);
+      setApiError('Unable to connect to Janmitra registration server. Please check your backend connection.');
     } finally {
       setIsLoading(false);
     }
@@ -340,13 +307,26 @@ export const LoginPage = () => {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
       {/* Top Back Link */}
-      <div className="w-full max-w-md mx-auto mb-3">
+      <div className="w-full max-w-md mx-auto mb-3 flex items-center justify-between">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-xs font-bold text-[#0d2a53] hover:text-blue-700 transition px-3 py-1.5 rounded-lg hover:bg-slate-200/60"
         >
           <span>←</span> Back to Public Home
         </Link>
+
+        {/* Portal Mode Switcher Pill */}
+        <button
+          type="button"
+          onClick={() => handleRoleSwitch(selectedRole === 'worker' ? 'citizen' : 'worker')}
+          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition border ${
+            selectedRole === 'worker'
+              ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+              : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+          }`}
+        >
+          {selectedRole === 'worker' ? 'Switch to Citizen Portal' : '👷 Field Worker Portal'}
+        </button>
       </div>
 
       {/* Centered Mobile-First Container */}
@@ -354,10 +334,9 @@ export const LoginPage = () => {
         
         {/* ================= HEADER CARD ================= */}
         <div className="bg-[#0d2a53] text-white px-6 py-8 text-center relative">
-          {/* Subtle Background Glow Accent */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-blue-500/10 blur-2xl pointer-events-none rounded-full" />
 
-          {/* Logo / Emblems */}
+          {/* Logo / Emblem */}
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-inner">
             <span className="text-3xl" role="img" aria-label="Municipal Corporation Logo">🏛️</span>
           </div>
@@ -372,21 +351,21 @@ export const LoginPage = () => {
             <span className="inline-block bg-blue-600/40 text-blue-200 border border-blue-400/30 text-[11px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
               Janmitra Municipal Corporation
             </span>
-            {activeTab === 'login' && (
-              <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                selectedRole === 'worker' ? 'bg-amber-500/30 text-amber-200 border border-amber-400/30' : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
-              }`}>
-                {selectedRole === 'worker' ? '👷 Field Worker' : '👤 Citizen'}
-              </span>
-            )}
+            <span className={`inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+              selectedRole === 'worker' 
+                ? 'bg-amber-500/30 text-amber-200 border border-amber-400/30' 
+                : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+            }`}>
+              {selectedRole === 'worker' ? '👷 Field Worker' : '👤 Citizen'}
+            </span>
           </div>
 
           {/* Tagline */}
           <p className="text-slate-300 text-xs sm:text-sm mt-2 max-w-xs mx-auto leading-relaxed">
-            {activeTab === 'register' 
+            {selectedRole === 'worker'
+              ? 'Authorized Field Worker Operations & Repair Dispatch Portal'
+              : activeTab === 'register' 
               ? 'New Citizen Registration for Grievance Redressal'
-              : selectedRole === 'worker'
-              ? 'JMC Field Worker Task & Repair Portal'
               : 'Citizen Civic Issue Reporting & Redressal Portal'}
           </p>
         </div>
@@ -394,44 +373,77 @@ export const LoginPage = () => {
         {/* ================= FORM CARD ================= */}
         <div className="bg-white p-6 sm:p-8">
           
-          {/* TABS HEADER */}
-          <div className="flex border-b border-slate-200 mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('login');
-                setApiError('');
-              }}
-              className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
-                activeTab === 'login'
-                  ? 'text-[#0d2a53]'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Sign In
-              {activeTab === 'login' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
-              )}
-            </button>
+          {/* TABS HEADER (Citizen mode shows Sign In + Register. Worker mode shows Worker Sign In only) */}
+          {selectedRole === 'citizen' ? (
+            <div className="flex border-b border-slate-200 mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('login');
+                  setApiError('');
+                  setRegSuccessMessage('');
+                  setSearchParams({ role: 'citizen' });
+                }}
+                className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
+                  activeTab === 'login'
+                    ? 'text-[#0d2a53]'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Sign In
+                {activeTab === 'login' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('register');
-                setApiError('');
-              }}
-              className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
-                activeTab === 'register'
-                  ? 'text-[#0d2a53]'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              Register (Citizen)
-              {activeTab === 'register' && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
-              )}
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('register');
+                  setApiError('');
+                  setRegSuccessMessage('');
+                  setSearchParams({ role: 'citizen', tab: 'register' });
+                }}
+                className={`flex-1 py-3 text-center text-sm font-bold transition-all relative ${
+                  activeTab === 'register'
+                    ? 'text-[#0d2a53]'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Register (Citizen)
+                {activeTab === 'register' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0d2a53] rounded-t-md" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="border-b border-slate-200 mb-6 pb-3">
+              <div className="text-sm font-bold text-amber-900 flex items-center justify-between">
+                <span>👷 Field Worker Sign In</span>
+                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Staff Access Only
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Public registration is disabled for field workers. Please sign in with your authorized municipal mobile number.
+              </p>
+            </div>
+          )}
+
+          {/* ================= SUCCESS BANNER ================= */}
+          {regSuccessMessage && (
+            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-start gap-3 text-emerald-800 text-xs sm:text-sm">
+              <span className="text-base leading-none">🎉</span>
+              <div className="flex-1 font-semibold leading-snug">{regSuccessMessage}</div>
+              <button
+                type="button"
+                onClick={() => setRegSuccessMessage('')}
+                className="text-emerald-500 hover:text-emerald-800 font-bold ml-1"
+              >
+                &times;
+              </button>
+            </div>
+          )}
 
           {/* ================= API ERROR BANNER ================= */}
           {apiError && (
@@ -454,7 +466,7 @@ export const LoginPage = () => {
               {/* Mobile Number */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
+                  {selectedRole === 'worker' ? 'Worker Mobile Number' : 'Registered Mobile Number'} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
@@ -470,6 +482,7 @@ export const LoginPage = () => {
                       const val = e.target.value.replace(/\D/g, '');
                       setLoginForm((prev) => ({ ...prev, mobile: val }));
                       if (loginErrors.mobile) setLoginErrors((prev) => ({ ...prev, mobile: null }));
+                      if (apiError) setApiError('');
                     }}
                     className={`w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                       loginErrors.mobile
@@ -500,6 +513,7 @@ export const LoginPage = () => {
                     onChange={(e) => {
                       setLoginForm((prev) => ({ ...prev, password: e.target.value }));
                       if (loginErrors.password) setLoginErrors((prev) => ({ ...prev, password: null }));
+                      if (apiError) setApiError('');
                     }}
                     className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                       loginErrors.password
@@ -514,12 +528,10 @@ export const LoginPage = () => {
                     aria-label="Toggle password visibility"
                   >
                     {showLoginPassword ? (
-                      /* Eye Off Icon */
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                       </svg>
                     ) : (
-                      /* Eye On Icon */
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -538,7 +550,11 @@ export const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-2 py-3 px-4 rounded-xl text-white font-bold text-sm bg-[#0d2a53] hover:bg-[#133b73] active:bg-[#091e3b] transition duration-200 shadow-md shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className={`w-full mt-2 py-3 px-4 rounded-xl text-white font-bold text-sm transition duration-200 shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${
+                  selectedRole === 'worker'
+                    ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 shadow-amber-900/10'
+                    : 'bg-[#0d2a53] hover:bg-[#133b73] active:bg-[#091e3b] shadow-blue-900/10'
+                }`}
               >
                 {isLoading ? (
                   <>
@@ -546,22 +562,24 @@ export const LoginPage = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
-                    <span>Signing in...</span>
+                    <span>Verifying Credentials...</span>
                   </>
                 ) : (
-                  <span>Sign In</span>
+                  <span>{selectedRole === 'worker' ? 'Sign In to Field Portal' : 'Sign In'}</span>
                 )}
               </button>
 
-              {/* Role Hints Footer */}
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Authorized for Citizens, Workers, Officers & Admins
+              {/* Information Note */}
+              <div className="pt-2 text-center text-xs text-slate-500">
+                {selectedRole === 'worker'
+                  ? 'Authorized Field Workers (PWD, SWM, PHE, ELEC)'
+                  : 'Authorized for Registered Citizens of Janmitra Municipal Corporation'}
               </div>
             </form>
           )}
 
-          {/* ================= 2. REGISTER FORM ================= */}
-          {activeTab === 'register' && (
+          {/* ================= 2. CITIZEN REGISTER FORM ================= */}
+          {activeTab === 'register' && selectedRole === 'citizen' && (
             <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div>
@@ -575,6 +593,7 @@ export const LoginPage = () => {
                   onChange={(e) => {
                     setRegisterForm((prev) => ({ ...prev, name: e.target.value }));
                     if (registerErrors.name) setRegisterErrors((prev) => ({ ...prev, name: null }));
+                    if (apiError) setApiError('');
                   }}
                   className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                     registerErrors.name
@@ -608,6 +627,7 @@ export const LoginPage = () => {
                       const val = e.target.value.replace(/\D/g, '');
                       setRegisterForm((prev) => ({ ...prev, mobile: val }));
                       if (registerErrors.mobile) setRegisterErrors((prev) => ({ ...prev, mobile: null }));
+                      if (apiError) setApiError('');
                     }}
                     className={`w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                       registerErrors.mobile
@@ -623,6 +643,33 @@ export const LoginPage = () => {
                 )}
               </div>
 
+              {/* Email Address */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. faizan@example.com"
+                  value={registerForm.email}
+                  onChange={(e) => {
+                    setRegisterForm((prev) => ({ ...prev, email: e.target.value }));
+                    if (registerErrors.email) setRegisterErrors((prev) => ({ ...prev, email: null }));
+                    if (apiError) setApiError('');
+                  }}
+                  className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
+                    registerErrors.email
+                      ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                      : 'border-slate-300 focus:border-[#0d2a53] focus:ring-2 focus:ring-blue-100'
+                  }`}
+                />
+                {registerErrors.email && (
+                  <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
+                    <span>•</span> {registerErrors.email}
+                  </p>
+                )}
+              </div>
+
               {/* Ward Selection Dropdown */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -633,6 +680,7 @@ export const LoginPage = () => {
                   onChange={(e) => {
                     setRegisterForm((prev) => ({ ...prev, ward: e.target.value }));
                     if (registerErrors.ward) setRegisterErrors((prev) => ({ ...prev, ward: null }));
+                    if (apiError) setApiError('');
                   }}
                   className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 outline-none transition duration-150 ${
                     registerErrors.ward
@@ -641,10 +689,10 @@ export const LoginPage = () => {
                   }`}
                 >
                   <option value="">Select your ward</option>
-                  <option value="Ward 1">Ward 1 (Dharampeth / West Nagpur)</option>
-                  <option value="Ward 2">Ward 2 (Dhantoli / Central Nagpur)</option>
-                  <option value="Ward 3">Ward 3 (Nehru Nagar / East Nagpur)</option>
-                  <option value="Ward 4">Ward 4 (Mangalwari / North Nagpur)</option>
+                  <option value="Ward 1 (Laxmi Nagar / South-West Nagpur)">Ward 1 (Laxmi Nagar / South-West Nagpur)</option>
+                  <option value="Ward 2 (Dhantoli / Central Nagpur)">Ward 2 (Dhantoli / Central Nagpur)</option>
+                  <option value="Ward 3 (Hanuman Nagar / South-East Nagpur)">Ward 3 (Hanuman Nagar / South-East Nagpur)</option>
+                  <option value="Ward 4 (Mangalwari / North Nagpur)">Ward 4 (Mangalwari / North Nagpur)</option>
                 </select>
                 {registerErrors.ward && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium flex items-center gap-1">
@@ -661,11 +709,12 @@ export const LoginPage = () => {
                 <div className="relative">
                   <input
                     type={showRegPassword ? 'text' : 'password'}
-                    placeholder="Minimum 8 characters"
+                    placeholder="Minimum 6 characters"
                     value={registerForm.password}
                     onChange={(e) => {
                       setRegisterForm((prev) => ({ ...prev, password: e.target.value }));
                       if (registerErrors.password) setRegisterErrors((prev) => ({ ...prev, password: null }));
+                      if (apiError) setApiError('');
                     }}
                     className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                       registerErrors.password
@@ -713,6 +762,7 @@ export const LoginPage = () => {
                       if (registerErrors.confirmPassword) {
                         setRegisterErrors((prev) => ({ ...prev, confirmPassword: null }));
                       }
+                      if (apiError) setApiError('');
                     }}
                     className={`w-full px-4 pr-11 py-2.5 text-sm rounded-xl border bg-slate-50/50 focus:bg-white text-slate-900 placeholder-slate-400 outline-none transition duration-150 ${
                       registerErrors.confirmPassword
@@ -760,88 +810,18 @@ export const LoginPage = () => {
                     <span>Creating Account...</span>
                   </>
                 ) : (
-                  <span>Register & Continue</span>
+                  <span>Register Account</span>
                 )}
               </button>
 
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Official registration for citizens of Janmitra Municipal Corporation
+              <div className="pt-2 text-center text-xs text-slate-500">
+                Official citizen registration for Janmitra Municipal Corporation
               </div>
             </form>
           )}
 
-          {/* Quick Dev Switcher */}
-          <div className="mt-5 pt-4 border-t border-slate-100">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              ⚡ Quick Test Login (Direct Portal Entry)
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  login({
-                    token: 'jwt-faizan-token',
-                    role: 'citizen',
-                    user: { id: 'u-faizan-1', name: 'Faizan Rayeen', mobile: '8767972843', role: 'citizen', ward: 'Ward 4 (Mangalwari / North Nagpur)' }
-                  });
-                  navigate('/citizen');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-200/60 flex items-center justify-center gap-1.5"
-              >
-                <span>👤</span> Faizan (Citizen)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  login({
-                    token: 'jwt-officer-token',
-                    role: 'officer',
-                    user: { id: 'u-officer-1', name: 'Officer Patil', mobile: '9823011223', role: 'officer', department: 'PWD' }
-                  });
-                  navigate('/officer');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition border border-cyan-200/60 flex items-center justify-center gap-1.5"
-              >
-                <span>🏢</span> Officer Portal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  login({
-                    token: 'jwt-worker-token',
-                    role: 'worker',
-                    user: { id: 'u-worker-1', name: 'Suresh Kamble', mobile: '9822345671', role: 'worker', department: 'PWD', ward: 'Ward 4' }
-                  });
-                  navigate('/worker');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition border border-amber-200/60 flex items-center justify-center gap-1.5"
-              >
-                <span>👷</span> Field Worker
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  login({
-                    token: 'jwt-admin-token',
-                    role: 'admin',
-                    user: { id: 'u-admin-1', name: 'Admin (Central Command)', mobile: '9999999999', role: 'admin' }
-                  });
-                  navigate('/admin');
-                }}
-                className="py-2 px-2.5 text-xs font-semibold rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 transition border border-slate-200 flex items-center justify-center gap-1.5"
-              >
-                <span>🏛️</span> Admin Portal
-              </button>
-            </div>
-          </div>
-
         </div>
       </div>
-
-      {/* Bottom Footer Note */}
-      <footer className="mt-8 text-center text-xs text-slate-500">
-        JANMITRA &bull; Developed by Team ResolveIT &bull; Janmitra Municipal Corporation
-      </footer>
     </div>
   );
 };
